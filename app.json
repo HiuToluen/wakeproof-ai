@@ -15,7 +15,10 @@
       "package": "com.se1928.group5.wakeproofai"
     },
     "web": {
-      "output": "static"
-    }
+      "output": "single"
+    },
+    "plugins": [
+      "expo-sqlite"
+    ]
   }
 }

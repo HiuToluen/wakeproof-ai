@@ -1,39 +1,49 @@
+import { useCallback, useEffect, useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+import PrimaryButton from './src/components/common/PrimaryButton';
+import { runMigrations } from './src/database/migrations';
+import RootNavigator, { APP_MODES } from './src/navigation/RootNavigator';
+import { colors, spacing, typography } from './src/theme';
 
 export default function App() {
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.title}>WakeProof AI</Text>
-        <Text style={styles.subtitle}>Wake up. Prove it. Start your day.</Text>
-      </View>
-      <StatusBar style="dark" />
-    </SafeAreaView>
-  );
+  const [appMode, setAppMode] = useState(APP_MODES.WELCOME);
+  const [databaseState, setDatabaseState] = useState('INITIALIZING');
+  const [initializationError, setInitializationError] = useState('');
+
+  const initializeDatabase = useCallback(async () => {
+    setDatabaseState('INITIALIZING');
+    setInitializationError('');
+    try {
+      await runMigrations();
+      setDatabaseState('READY');
+    } catch (error) {
+      setInitializationError(error.message);
+      setDatabaseState('ERROR');
+    }
+  }, []);
+
+  useEffect(() => {
+    initializeDatabase();
+  }, [initializeDatabase]);
+
+  let content;
+  if (databaseState === 'INITIALIZING') {
+    content = <View style={styles.center}><ActivityIndicator color={colors.primary} /><Text style={styles.message}>Preparing WakeProof AI...</Text></View>;
+  } else if (databaseState === 'ERROR') {
+    content = <View style={styles.center}><Text style={styles.error}>Unable to initialize local alarm storage.</Text><Text style={styles.message}>{initializationError}</Text><PrimaryButton title="Retry" onPress={initializeDatabase} style={styles.button} /></View>;
+  } else {
+    content = (
+      <NavigationContainer>
+        <RootNavigator appMode={appMode} onContinueAsGuest={() => setAppMode(APP_MODES.GUEST)} onLoginSuccess={() => setAppMode(APP_MODES.AUTHENTICATED)} onLogout={() => setAppMode(APP_MODES.WELCOME)} />
+      </NavigationContainer>
+    );
+  }
+
+  return <SafeAreaProvider>{content}<StatusBar style="dark" /></SafeAreaProvider>;
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F7F8FA',
-  },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  title: {
-    color: '#111827',
-    fontSize: 32,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  subtitle: {
-    marginTop: 12,
-    color: '#4B5563',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-});
+const styles = StyleSheet.create({ center: { alignItems: 'center', backgroundColor: colors.background, flex: 1, justifyContent: 'center', padding: spacing.lg }, message: { ...typography.body, color: colors.textSecondary, marginTop: spacing.md, textAlign: 'center' }, error: { ...typography.heading, color: colors.danger, textAlign: 'center' }, button: { marginTop: spacing.lg, minWidth: 160 } });
