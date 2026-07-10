@@ -12,13 +12,36 @@
       "bundleIdentifier": "com.se1928.group5.wakeproofai"
     },
     "android": {
-      "package": "com.se1928.group5.wakeproofai"
+      "package": "com.se1928.group5.wakeproofai",
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "SCHEDULE_EXACT_ALARM"
+      ]
     },
     "web": {
       "output": "single"
     },
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/musics/brr-brr-patapim-alarm-brainrot-nhacchuongwow.com.mp3",
+            "./assets/musics/dream-alarm-nhacchuongwow.com.mp3",
+            "./assets/musics/nhac_chuong_bao_thuc_coi_bao_dong-www_tiengdong_com.mp3",
+            "./assets/musics/nhac_chuong_bao_thuc_cuc_to-www_tiengdong_com.mp3"
+          ]
+        }
+      ]
     ]
   }
 }

@@ -18,6 +18,7 @@ export default function SettingsScreen({ isGuest, onLogout }) {
           </View>
         ))}
       </View>
+      <Text style={styles.notice}>WakeProof currently uses local notifications for alarm delivery. Device battery optimization or force-stopping the app may affect alarm timing.</Text>
       <PrimaryButton
         title={isGuest ? 'Return to Welcome' : 'Sign Out'}
         onPress={onLogout}
@@ -49,6 +50,11 @@ const styles = StyleSheet.create({
   rowText: {
     ...typography.body,
     color: colors.textPrimary,
+  },
+  notice: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.lg,
   },
   button: {
     marginTop: spacing.xl,
