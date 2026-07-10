@@ -1,29 +1,21 @@
 {
   "expo": {
-    "name": "WakeProofAI",
-    "slug": "WakeProofAI",
+    "name": "WakeProof AI",
+    "slug": "wakeproof-ai",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "scheme": "wakeproofai",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.se1928.group5.wakeproofai"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true
+      "package": "com.se1928.group5.wakeproofai"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "output": "static"
     }
   }
 }
