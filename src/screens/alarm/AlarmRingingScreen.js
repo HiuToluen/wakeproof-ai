@@ -9,6 +9,7 @@ import { ALARM_SESSION_STATUS, CHALLENGE_STATUS } from '../../constants/alarmCon
 import { getAlarmById } from '../../database/alarmRepository';
 import { getAlarmSessionById, getQueuedSessionCount, snoozeAlarmSession, startChallengeSession, updateChallengeStatus } from '../../database/alarmSessionRepository';
 import { restartAlarmPlayback, stopAlarmPlayback } from '../../services/alarmAudioService';
+import { assignChallengeToSession } from '../../services/challengeService';
 import { cancelPendingSnoozeForSession, scheduleSnoozeNotification } from '../../services/alarmSchedulerService';
 import { colors, spacing, typography } from '../../theme';
 import { formatTime, getRepeatDaysSummary } from '../../utils/dateTime';
@@ -95,8 +96,10 @@ export default function AlarmRingingScreen({ navigation, route }) {
     try {
       await stopRinging();
       if (session.status === ALARM_SESSION_STATUS.SNOOZING) await cancelPendingSnoozeForSession(sessionId);
+      await assignChallengeToSession(sessionId);
       await startChallengeSession(sessionId);
       allowNavigation.current = true;
+      navigation.replace('ChallengeInstruction', { alarmId, sessionId });
     } catch (error) {
       Alert.alert('Unable to start challenge', error.message);
       setProcessing(false);

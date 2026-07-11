@@ -8,6 +8,7 @@ import { ALARM_SESSION_STATUS } from '../../constants/alarmConstants';
 import { getAlarmById } from '../../database/alarmRepository';
 import { getAlarmSessionById, getQueuedSessionCount, startChallengeSession } from '../../database/alarmSessionRepository';
 import { forceStopAlarmPlayback } from '../../services/alarmAudioService';
+import { assignChallengeToSession } from '../../services/challengeService';
 import { cancelPendingSnoozeForSession } from '../../services/alarmSchedulerService';
 import { colors, spacing, typography } from '../../theme';
 
@@ -35,8 +36,10 @@ export default function AlarmSnoozingScreen({ navigation, route }) {
     setProcessing(true);
     try {
       await cancelPendingSnoozeForSession(sessionId);
+      await assignChallengeToSession(sessionId);
       await startChallengeSession(sessionId);
       allowNavigation.current = true;
+      navigation.replace('ChallengeInstruction', { alarmId, sessionId });
     } catch (error) { setProcessing(false); Alert.alert('Unable to start challenge', error.message); }
   };
 

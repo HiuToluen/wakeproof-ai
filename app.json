@@ -25,6 +25,13 @@
     "plugins": [
       "expo-sqlite",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow WakeProof AI to access your camera for wake verification.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "expo-audio",
         {
           "microphonePermission": false,

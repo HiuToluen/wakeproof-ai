@@ -1,10 +1,11 @@
 import { ALARM_SESSION_STATUS, CHALLENGE_STATUS } from '../constants/alarmConstants';
+import { CHALLENGE_TIMEOUT_SECONDS } from '../constants/challengeConstants';
 import { getDatabase } from './database';
 
 const ACTIVE_STATUSES = [ALARM_SESSION_STATUS.RINGING, ALARM_SESSION_STATUS.SNOOZING, ALARM_SESSION_STATUS.CHALLENGE_ACTIVE];
 
 function mapSession(row) {
-  return row ? { id: row.id, alarmId: row.alarm_id, occurrenceKey: row.occurrence_key, queuePosition: row.queue_position, queuedAt: row.queued_at, scheduledAt: row.scheduled_at, triggeredAt: row.triggered_at, snoozeUntil: row.snooze_until, activatedAt: row.activated_at, completedAt: row.completed_at, dismissedAt: row.dismissed_at, status: row.status, snoozeCount: row.snooze_count, challengeStatus: row.challenge_status, createdAt: row.created_at, updatedAt: row.updated_at } : null;
+  return row ? { id: row.id, alarmId: row.alarm_id, occurrenceKey: row.occurrence_key, queuePosition: row.queue_position, queuedAt: row.queued_at, scheduledAt: row.scheduled_at, triggeredAt: row.triggered_at, snoozeUntil: row.snooze_until, activatedAt: row.activated_at, completedAt: row.completed_at, dismissedAt: row.dismissed_at, status: row.status, snoozeCount: row.snooze_count, challengeStatus: row.challenge_status, challengeId: row.challenge_id, challengeType: row.challenge_type, challengeTargetKey: row.challenge_target_key, challengeStartedAt: row.challenge_started_at, challengeDeadlineAt: row.challenge_deadline_at, challengeAttemptCount: row.challenge_attempt_count ?? 0, createdAt: row.created_at, updatedAt: row.updated_at } : null;
 }
 
 export async function createAlarmSession(session) {
@@ -43,10 +44,22 @@ export async function updateAlarmSessionStatus(id, status) {
 
 export async function updateChallengeStatus(id, status) { const database = await getDatabase(); await database.runAsync('UPDATE alarm_sessions SET challenge_status = ?, updated_at = ? WHERE id = ?', [status, new Date().toISOString(), id]); return getAlarmSessionById(id); }
 
-export async function startChallengeSession(id) {
-  const database = await getDatabase(); const now = new Date().toISOString();
-  await database.withTransactionAsync(async () => { await database.runAsync('UPDATE alarm_sessions SET status = ?, challenge_status = ?, snooze_until = NULL, updated_at = ? WHERE id = ?', [ALARM_SESSION_STATUS.CHALLENGE_ACTIVE, CHALLENGE_STATUS.IN_PROGRESS, now, id]); });
+export async function startChallengeSession(id, deadlineAt) {
+  const database = await getDatabase(); const now = new Date().toISOString(); const deadline = deadlineAt ?? new Date(Date.now() + CHALLENGE_TIMEOUT_SECONDS * 1000).toISOString();
+  await database.withTransactionAsync(async () => { await database.runAsync('UPDATE alarm_sessions SET status = ?, challenge_status = ?, challenge_started_at = ?, challenge_deadline_at = ?, snooze_until = NULL, updated_at = ? WHERE id = ?', [ALARM_SESSION_STATUS.CHALLENGE_ACTIVE, CHALLENGE_STATUS.IN_PROGRESS, now, deadline, now, id]); });
   return getAlarmSessionById(id);
+}
+
+export async function assignSessionChallenge(sessionId, challenge, startedAt, deadlineAt) {
+  const database = await getDatabase(); const now = new Date().toISOString();
+  await database.runAsync('UPDATE alarm_sessions SET challenge_id = COALESCE(challenge_id, ?), challenge_type = COALESCE(challenge_type, ?), challenge_target_key = COALESCE(challenge_target_key, ?), challenge_started_at = COALESCE(challenge_started_at, ?), challenge_deadline_at = COALESCE(challenge_deadline_at, ?), updated_at = ? WHERE id = ?', [challenge.id, challenge.type, challenge.targetKey, startedAt, deadlineAt, now, sessionId]);
+  return getAlarmSessionById(sessionId);
+}
+
+export async function incrementChallengeAttemptCount(sessionId) {
+  const database = await getDatabase();
+  await database.runAsync('UPDATE alarm_sessions SET challenge_attempt_count = challenge_attempt_count + 1, updated_at = ? WHERE id = ?', [new Date().toISOString(), sessionId]);
+  return getAlarmSessionById(sessionId);
 }
 
 export async function completeAlarmSession(id) {

@@ -69,6 +69,41 @@ export async function runMigrations() {
   if (!sessionColumnNames.has('completed_at')) {
     await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN completed_at TEXT;');
   }
+  if (!sessionColumnNames.has('challenge_id')) {
+    await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN challenge_id TEXT;');
+  }
+  if (!sessionColumnNames.has('challenge_type')) {
+    await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN challenge_type TEXT;');
+  }
+  if (!sessionColumnNames.has('challenge_target_key')) {
+    await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN challenge_target_key TEXT;');
+  }
+  if (!sessionColumnNames.has('challenge_started_at')) {
+    await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN challenge_started_at TEXT;');
+  }
+  if (!sessionColumnNames.has('challenge_deadline_at')) {
+    await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN challenge_deadline_at TEXT;');
+  }
+  if (!sessionColumnNames.has('challenge_attempt_count')) {
+    await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN challenge_attempt_count INTEGER NOT NULL DEFAULT 0;');
+  }
+  await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS challenge_attempts (
+      id TEXT PRIMARY KEY NOT NULL,
+      session_id TEXT NOT NULL,
+      challenge_id TEXT NOT NULL,
+      image_uri TEXT,
+      verification_status TEXT NOT NULL,
+      is_valid INTEGER,
+      confidence REAL,
+      reason TEXT,
+      attempted_at TEXT NOT NULL,
+      FOREIGN KEY (session_id)
+        REFERENCES alarm_sessions(id)
+        ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_challenge_attempts_session_id ON challenge_attempts(session_id);
+  `);
   await database.execAsync(`
     UPDATE alarm_sessions SET status = 'SNOOZING' WHERE status = 'SNOOZED';
     UPDATE alarm_sessions

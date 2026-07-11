@@ -8,12 +8,14 @@ import ScreenContainer from '../../components/common/ScreenContainer';
 import { getAlarmById } from '../../database/alarmRepository';
 import { restartAlarmPlayback, stopAlarmPlayback } from '../../services/alarmAudioService';
 import { assertNoActiveAlarmSession } from '../../services/alarmMutationGuard';
+import { CHALLENGE_TIMEOUT_SECONDS } from '../../constants/challengeConstants';
+import { selectRandomChallenge } from '../../services/challengeService';
 import { colors, spacing, typography } from '../../theme';
 
 const PREVIEW_VIBRATION = [0, 700, 300, 700, 300, 1200];
 
 export default function AlarmPreviewScreen({ navigation, route }) {
-  const { alarmId } = route.params;
+  const { alarmId } = route.params ?? {};
   const [alarm, setAlarm] = useState(null);
   const allowNavigation = useRef(false);
 
@@ -42,7 +44,14 @@ export default function AlarmPreviewScreen({ navigation, route }) {
   }, [alarmId, navigation, previewSessionId, stopPreview]));
 
   const exitPreview = async () => { await stopPreview(); allowNavigation.current = true; navigation.goBack(); };
-  const startChallengePreview = async () => { if (!alarm) return; await stopPreview(); allowNavigation.current = true; navigation.navigate('ChallengePreview', { alarmId, preview: true }); };
+  const startChallengePreview = async () => {
+    if (!alarm) return;
+    await stopPreview();
+    const challenge = selectRandomChallenge({ mode: alarm.challengeMode });
+    const now = Date.now();
+    allowNavigation.current = true;
+    navigation.navigate('PreviewChallengeInstruction', { alarmId, preview: true, challenge: { ...challenge, startedAt: new Date(now).toISOString(), deadlineAt: new Date(now + CHALLENGE_TIMEOUT_SECONDS * 1000).toISOString() } });
+  };
 
   return <ScreenContainer><View style={styles.center}><Text style={styles.preview}>Alarm Preview</Text><Text style={styles.title}>{alarm?.title || 'Loading alarm...'}</Text><Text style={styles.message}>This preview does not create or change an alarm session.</Text><PrimaryButton title="Start Challenge" onPress={startChallengePreview} style={styles.button} /><SecondaryButton title="Exit Preview" onPress={exitPreview} style={styles.exit} /></View></ScreenContainer>;
 }
