@@ -7,7 +7,7 @@ import SecondaryButton from '../../components/common/SecondaryButton';
 import ScreenContainer from '../../components/common/ScreenContainer';
 import { ALARM_SESSION_STATUS, CHALLENGE_STATUS } from '../../constants/alarmConstants';
 import { getAlarmById } from '../../database/alarmRepository';
-import { getAlarmSessionById, getQueuedSessionCount, snoozeAlarmSession, startChallengeSession, updateChallengeStatus } from '../../database/alarmSessionRepository';
+import { clearExpiredChallengeLockout, getAlarmSessionById, getQueuedSessionCount, snoozeAlarmSession, startChallengeSession, updateChallengeStatus } from '../../database/alarmSessionRepository';
 import { restartAlarmPlayback, stopAlarmPlayback } from '../../services/alarmAudioService';
 import { assignChallengeToSession } from '../../services/challengeService';
 import { cancelPendingSnoozeForSession, scheduleSnoozeNotification } from '../../services/alarmSchedulerService';
@@ -42,14 +42,18 @@ export default function AlarmRingingScreen({ navigation, route }) {
 
     const activateRinging = async () => {
       try {
-        const [loadedAlarm, loadedSession, waitingCount] = await Promise.all([getAlarmById(alarmId), getAlarmSessionById(sessionId), getQueuedSessionCount()]);
-        if (!loadedAlarm || !loadedSession) throw new Error('Alarm session could not be loaded.');
+        const [loadedAlarm, rawSession, waitingCount] = await Promise.all([getAlarmById(alarmId), getAlarmSessionById(sessionId), getQueuedSessionCount()]);
+        if (!loadedAlarm || !rawSession) throw new Error('Alarm session could not be loaded.');
+        const loadedSession = await clearExpiredChallengeLockout(sessionId);
         if (!active) return;
         setAlarm(loadedAlarm);
         setQueuedCount(waitingCount);
         setSession(loadedSession);
         if (loadedSession.status === ALARM_SESSION_STATUS.SNOOZING) {
-          await stopRinging();
+      const latestSession = await clearExpiredChallengeLockout(sessionId);
+      if (latestSession.challengeLockedUntil && new Date(latestSession.challengeLockedUntil).getTime() > Date.now()) throw new Error('Challenge is temporarily locked. Keep waking up and try again shortly.');
+      setSession(latestSession);
+      await stopRinging();
           return;
         }
         if (loadedSession.status !== ALARM_SESSION_STATUS.RINGING) return;
@@ -110,7 +114,8 @@ export default function AlarmRingingScreen({ navigation, route }) {
 
   if (!alarm || !session) return <ScreenContainer><View style={styles.center}><Text style={styles.message}>Loading alarm...</Text></View></ScreenContainer>;
   const snoozeSeconds = session.snoozeUntil ? Math.max(0, Math.ceil((new Date(session.snoozeUntil).getTime() - now.getTime()) / 1000)) : 0;
-  return <ScreenContainer><View style={styles.center}><Text style={styles.clock}>{formatTime(now.getHours(), now.getMinutes())}</Text><Text style={styles.title}>{alarm.title}</Text><Text style={styles.message}>{getRepeatDaysSummary(alarm.repeatDays)}</Text>{session.status === ALARM_SESSION_STATUS.SNOOZING ? <Text style={styles.waiting}>Snoozing: {Math.floor(snoozeSeconds / 60)}:{String(snoozeSeconds % 60).padStart(2, '0')}</Text> : null}<Text style={styles.message}>Snoozes: {session.snoozeCount} of {alarm.maxSnooze}</Text>{queuedCount > 0 ? <Text style={styles.waiting}>{queuedCount} alarm{queuedCount === 1 ? '' : 's'} waiting</Text> : null}<PrimaryButton title="Start Wake Challenge" onPress={startChallenge} disabled={processing} style={styles.challenge} />{session.status === ALARM_SESSION_STATUS.RINGING && session.snoozeCount < alarm.maxSnooze ? <SecondaryButton title={processing ? 'Processing...' : 'Snooze'} onPress={snooze} disabled={processing} style={styles.snooze} /> : null}</View></ScreenContainer>;
+  const lockSeconds = session.challengeLockedUntil ? Math.max(0, Math.ceil((new Date(session.challengeLockedUntil).getTime() - now.getTime()) / 1000)) : 0;
+  return <ScreenContainer><View style={styles.center}><Text style={styles.clock}>{formatTime(now.getHours(), now.getMinutes())}</Text><Text style={styles.title}>{alarm.title}</Text><Text style={styles.message}>{getRepeatDaysSummary(alarm.repeatDays)}</Text>{session.status === ALARM_SESSION_STATUS.SNOOZING ? <Text style={styles.waiting}>Snoozing: {Math.floor(snoozeSeconds / 60)}:{String(snoozeSeconds % 60).padStart(2, '0')}</Text> : null}{lockSeconds > 0 ? <><Text style={styles.waiting}>Challenge locked</Text><Text style={styles.waiting}>Available again in {Math.floor(lockSeconds / 60)}:{String(lockSeconds % 60).padStart(2, '0')}</Text></> : null}<Text style={styles.message}>Snoozes: {session.snoozeCount} of {alarm.maxSnooze}</Text>{queuedCount > 0 ? <Text style={styles.waiting}>{queuedCount} alarm{queuedCount === 1 ? '' : 's'} waiting</Text> : null}<PrimaryButton title={lockSeconds > 0 ? 'Challenge temporarily locked' : 'Start Wake Challenge'} onPress={startChallenge} disabled={processing || lockSeconds > 0} style={styles.challenge} />{session.status === ALARM_SESSION_STATUS.RINGING && session.snoozeCount < alarm.maxSnooze ? <SecondaryButton title={processing ? 'Processing...' : 'Snooze'} onPress={snooze} disabled={processing} style={styles.snooze} /> : null}</View></ScreenContainer>;
 }
 
 const styles = StyleSheet.create({ center: { alignItems: 'center', flex: 1, justifyContent: 'center' }, clock: { color: colors.primary, fontSize: 64, fontWeight: '700' }, title: { ...typography.heading, color: colors.textPrimary, marginTop: spacing.lg }, message: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm }, waiting: { ...typography.label, color: colors.danger, marginTop: spacing.md }, challenge: { marginTop: spacing.xxl, width: '100%' }, snooze: { marginTop: spacing.md, width: '100%' } });

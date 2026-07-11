@@ -48,7 +48,8 @@
             "./assets/musics/nhac_chuong_bao_thuc_cuc_to-www_tiengdong_com.mp3"
           ]
         }
-      ]
+      ],
+      "expo-asset"
     ]
   }
 }

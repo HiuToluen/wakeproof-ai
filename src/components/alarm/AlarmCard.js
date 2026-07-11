@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '../../theme';
 import { formatNextTrigger } from '../../utils/alarmDateTime';
@@ -20,12 +20,12 @@ export default function AlarmCard({ alarm, menuVisible, onAdd, onDelete, onDupli
           <Pressable accessibilityLabel="Alarm actions" accessibilityRole="button" onPress={menuVisible ? onMenuClose : onMenuOpen} style={styles.menuButton}>
             <Text style={styles.menuIcon}>⋮</Text>
           </Pressable>
-          {menuVisible ? <View style={styles.menu}>
+          {menuVisible ? <View style={styles.menu}><ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
             <MenuAction title="Add New Alarm" onPress={onAdd} />
             <MenuAction title="Preview Alarm" onPress={onPreview} />
             <MenuAction title="Duplicate Alarm" onPress={onDuplicate} />
             <MenuAction danger title="Delete Alarm" onPress={onDelete} />
-          </View> : null}
+          </ScrollView></View> : null}
         </View>
       </View>
     </View>

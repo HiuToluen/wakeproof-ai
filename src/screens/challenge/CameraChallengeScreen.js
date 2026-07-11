@@ -12,7 +12,7 @@ function getRemaining(deadlineAt) {
 }
 
 export default function CameraChallengeScreen({ navigation, route }) {
-  const { alarmId, sessionId, challenge, preview = false } = route.params;
+  const { alarmId, sessionId, challenge, preview = false, challengeMode, previewRerollCount, previewChallengeHistory, previewAttemptCount, lastVerificationCompletedAt, serviceRetryCount } = route.params;
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState('back');
   const [remaining, setRemaining] = useState(getRemaining(challenge.deadlineAt));
@@ -25,7 +25,10 @@ export default function CameraChallengeScreen({ navigation, route }) {
     if (transitionStarted.current) return;
     transitionStarted.current = true;
     if (preview) navigation.popTo('AlarmPreview', { alarmId });
-    else await returnChallengeToRinging(sessionId).catch((error) => Alert.alert('Unable to restart alarm', error.message));
+    else {
+      await returnChallengeToRinging(sessionId, { restartAlerts: false }).catch((error) => Alert.alert('Unable to restart alarm', error.message));
+      navigation.reset({ index: 0, routes: [{ name: 'AlarmRinging', params: { alarmId, sessionId } }] });
+    }
   }, [alarmId, navigation, preview, sessionId]);
 
   useEffect(() => {
@@ -36,7 +39,7 @@ export default function CameraChallengeScreen({ navigation, route }) {
       setRemaining(next);
       if (next <= 0) timeout();
     }, 500);
-    const back = BackHandler.addEventListener('hardwareBackPress', () => { navigation.navigate(preview ? 'PreviewChallengeInstruction' : 'ChallengeInstruction', { alarmId, sessionId, preview, challenge }); return true; });
+    const back = BackHandler.addEventListener('hardwareBackPress', () => { navigation.navigate(preview ? 'PreviewChallengeInstruction' : 'ChallengeInstruction', { alarmId, sessionId, preview, challenge, challengeMode, previewRerollCount, previewChallengeHistory, previewAttemptCount, lastVerificationCompletedAt, serviceRetryCount }); return true; });
     return () => { clearInterval(timer); back.remove(); };
   }, [challenge, challenge.deadlineAt, navigation, preview, requestPermission, sessionId, timeout]);
 
@@ -45,7 +48,7 @@ export default function CameraChallengeScreen({ navigation, route }) {
     setCapturing(true);
     try {
       const image = await cameraRef.current.takePictureAsync({ quality: 0.8, base64: false, exif: false });
-      navigation.navigate(preview ? 'PreviewChallengePhoto' : 'ChallengePreview', { alarmId, sessionId, preview, challenge, image });
+      navigation.navigate(preview ? 'PreviewChallengePhoto' : 'ChallengePreview', { alarmId, sessionId, preview, challenge, image, challengeMode, previewRerollCount, previewChallengeHistory, previewAttemptCount, lastVerificationCompletedAt, serviceRetryCount });
     } catch (error) {
       Alert.alert('Unable to capture photo', error.message);
       setCapturing(false);
@@ -53,7 +56,7 @@ export default function CameraChallengeScreen({ navigation, route }) {
   };
 
   if (!permission) return <View style={styles.center}><Text style={styles.message}>Checking camera permission...</Text></View>;
-  if (!permission.granted) return <View style={styles.permission}><Text style={styles.title}>Camera access is needed</Text><Text style={styles.message}>Use the camera to take a direct proof photo. Time remaining: {remaining}s</Text><PrimaryButton title="Retry Permission" onPress={requestPermission} style={styles.button} />{!permission.canAskAgain ? <SecondaryButton title="Open Settings" onPress={() => Linking.openSettings?.()} style={styles.button} /> : null}<SecondaryButton title="Back" onPress={() => navigation.navigate(preview ? 'PreviewChallengeInstruction' : 'ChallengeInstruction', { alarmId, sessionId, preview, challenge })} style={styles.button} /></View>;
+  if (!permission.granted) return <View style={styles.permission}><Text style={styles.title}>Camera access is needed</Text><Text style={styles.message}>Use the camera to take a direct proof photo. Time remaining: {remaining}s</Text><PrimaryButton title="Retry Permission" onPress={requestPermission} style={styles.button} />{!permission.canAskAgain ? <SecondaryButton title="Open Settings" onPress={() => Linking.openSettings?.()} style={styles.button} /> : null}<SecondaryButton title="Back" onPress={() => navigation.navigate(preview ? 'PreviewChallengeInstruction' : 'ChallengeInstruction', { alarmId, sessionId, preview, challenge, challengeMode, previewRerollCount, previewChallengeHistory, previewAttemptCount, lastVerificationCompletedAt, serviceRetryCount })} style={styles.button} /></View>;
 
   return <View style={styles.container}><CameraView ref={cameraRef} style={styles.camera} facing={facing} mode="picture" onCameraReady={() => setCameraReady(true)} /><View pointerEvents="none" style={styles.overlay}><Text style={styles.countdown}>{remaining}s</Text><Text style={styles.instruction}>{challenge.instruction}</Text></View><View style={styles.controls}><Pressable style={styles.flip} onPress={() => setFacing((current) => current === 'back' ? 'front' : 'back')} disabled={capturing}><Text style={styles.controlText}>Flip</Text></Pressable><Pressable style={[styles.capture, capturing && styles.disabled]} onPress={capture} disabled={capturing || !cameraReady || remaining <= 0}><Text style={styles.controlText}>{capturing ? 'Saving...' : 'Capture'}</Text></Pressable></View></View>;
 }

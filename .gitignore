@@ -35,6 +35,8 @@ yarn-error.*
 .env.local
 .env.*.local
 
+PROJECT_STATE.md
+
 # Service configuration
 google-services.json
 GoogleService-Info.plist

@@ -1,18 +1,25 @@
-import { CHALLENGE_MODES } from '../constants/alarmConstants';
-import { CHALLENGE_TIMEOUT_SECONDS } from '../constants/challengeConstants';
+import { ALARM_SESSION_STATUS, CHALLENGE_MODES } from '../constants/alarmConstants';
+import { CHALLENGE_TIMEOUT_SECONDS, MAX_CHALLENGE_REROLLS } from '../constants/challengeConstants';
 import { CHALLENGE_CATALOG } from '../data/challengeCatalog';
 import { getAlarmById } from '../database/alarmRepository';
-import { assignSessionChallenge, getAlarmSessionById } from '../database/alarmSessionRepository';
+import { assignSessionChallenge, getAlarmSessionById, rerollSessionChallenge } from '../database/alarmSessionRepository';
 
 export function getActiveChallenges() {
   return CHALLENGE_CATALOG.filter((challenge) => challenge.isActive);
 }
 
-export function selectRandomChallenge(options = {}) {
-  const mode = options.mode ?? CHALLENGE_MODES.RANDOM;
-  const challenges = getActiveChallenges().filter((challenge) => mode === CHALLENGE_MODES.RANDOM || challenge.type === mode);
-  if (challenges.length === 0) throw new Error('No active challenges are available.');
+function getChallengesForMode(mode) {
+  return getActiveChallenges().filter((challenge) => mode === CHALLENGE_MODES.RANDOM || challenge.type === mode);
+}
+
+function pickRandom(challenges) {
   return challenges[Math.floor(Math.random() * challenges.length)];
+}
+
+export function selectRandomChallenge(options = {}) {
+  const challenges = getChallengesForMode(options.mode ?? CHALLENGE_MODES.RANDOM);
+  if (challenges.length === 0) throw new Error('No active challenges are available.');
+  return pickRandom(challenges);
 }
 
 export async function getAssignedChallenge(sessionId) {
@@ -20,7 +27,32 @@ export async function getAssignedChallenge(sessionId) {
   if (!session?.challengeId) return null;
   const definition = CHALLENGE_CATALOG.find((challenge) => challenge.id === session.challengeId);
   if (!definition) return null;
-  return { ...definition, startedAt: session.challengeStartedAt, deadlineAt: session.challengeDeadlineAt };
+  return { ...definition, startedAt: session.challengeStartedAt, deadlineAt: session.challengeDeadlineAt, rerollCount: session.challengeRerollCount ?? 0, remainingRerolls: Math.max(0, MAX_CHALLENGE_REROLLS - (session.challengeRerollCount ?? 0)), challengeHistory: session.challengeHistory ?? [] };
+}
+
+export async function getChallengeRerollState(sessionId) {
+  const session = await getAlarmSessionById(sessionId);
+  if (!session) throw new Error('Alarm session could not be loaded.');
+  return { rerollCount: session.challengeRerollCount ?? 0, remainingRerolls: Math.max(0, MAX_CHALLENGE_REROLLS - (session.challengeRerollCount ?? 0)), challengeHistory: session.challengeHistory ?? [] };
+}
+
+export async function rerollChallengeForSession(sessionId) {
+  const session = await getAlarmSessionById(sessionId);
+  if (!session) throw new Error('Alarm session could not be loaded.');
+  if (session.status !== ALARM_SESSION_STATUS.CHALLENGE_ACTIVE) throw new Error('Challenge is no longer active.');
+  if ((session.challengeRerollCount ?? 0) >= MAX_CHALLENGE_REROLLS) throw new Error('No rerolls remaining.');
+  if (!session.challengeId) throw new Error('No challenge is currently assigned.');
+  const alarm = await getAlarmById(session.alarmId);
+  const validPool = getChallengesForMode(alarm?.challengeMode ?? CHALLENGE_MODES.RANDOM);
+  const alternatives = validPool.filter((challenge) => challenge.id !== session.challengeId);
+  if (alternatives.length === 0) throw new Error('No alternative challenge is available for this alarm.');
+  const history = session.challengeHistory ?? [];
+  const unseen = alternatives.filter((challenge) => !history.includes(challenge.id));
+  const selected = pickRandom(unseen.length > 0 ? unseen : alternatives);
+  const nextHistory = history.includes(session.challengeId) ? history : [...history, session.challengeId];
+  const updatedSession = await rerollSessionChallenge(sessionId, selected, nextHistory);
+  if (updatedSession.status !== ALARM_SESSION_STATUS.CHALLENGE_ACTIVE || updatedSession.challengeId !== selected.id) throw new Error('Challenge reroll could not be applied.');
+  return { ...selected, startedAt: updatedSession.challengeStartedAt, deadlineAt: updatedSession.challengeDeadlineAt, rerollCount: updatedSession.challengeRerollCount, remainingRerolls: Math.max(0, MAX_CHALLENGE_REROLLS - updatedSession.challengeRerollCount), challengeHistory: updatedSession.challengeHistory };
 }
 
 export async function assignChallengeToSession(sessionId) {
@@ -33,5 +65,5 @@ export async function assignChallengeToSession(sessionId) {
   const startedAt = new Date().toISOString();
   const deadlineAt = new Date(Date.now() + CHALLENGE_TIMEOUT_SECONDS * 1000).toISOString();
   await assignSessionChallenge(sessionId, challenge, startedAt, deadlineAt);
-  return { ...challenge, startedAt, deadlineAt };
+  return { ...challenge, startedAt, deadlineAt, rerollCount: 0, remainingRerolls: MAX_CHALLENGE_REROLLS, challengeHistory: [] };
 }

@@ -7,13 +7,16 @@ import { forceStopAlarmPlayback, restartAlarmPlayback } from './alarmAudioServic
 
 export const VIBRATION_PATTERN = [0, 700, 300, 700, 300, 1200];
 
-export async function returnChallengeToRinging(sessionId) {
+export async function returnChallengeToRinging(sessionId, options = {}) {
+  const { restartAlerts = true } = options;
   await updateChallengeStatus(sessionId, CHALLENGE_STATUS.NOT_STARTED);
   const session = await updateAlarmSessionStatus(sessionId, ALARM_SESSION_STATUS.RINGING);
-  const alarm = await getAlarmById(session.alarmId);
-  if (alarm) await restartAlarmPlayback(sessionId, alarm.ringtoneId);
-  Vibration.cancel();
-  Vibration.vibrate(VIBRATION_PATTERN, true);
+  if (restartAlerts) {
+    const alarm = await getAlarmById(session.alarmId);
+    if (alarm) await restartAlarmPlayback(sessionId, alarm.ringtoneId);
+    Vibration.cancel();
+    Vibration.vibrate(VIBRATION_PATTERN, true);
+  }
   return session;
 }
 

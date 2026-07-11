@@ -8,7 +8,7 @@ import ScreenContainer from '../../components/common/ScreenContainer';
 import { getAlarmById } from '../../database/alarmRepository';
 import { restartAlarmPlayback, stopAlarmPlayback } from '../../services/alarmAudioService';
 import { assertNoActiveAlarmSession } from '../../services/alarmMutationGuard';
-import { CHALLENGE_TIMEOUT_SECONDS } from '../../constants/challengeConstants';
+import { CHALLENGE_TIMEOUT_SECONDS, MAX_CHALLENGE_REROLLS } from '../../constants/challengeConstants';
 import { selectRandomChallenge } from '../../services/challengeService';
 import { colors, spacing, typography } from '../../theme';
 
@@ -50,7 +50,7 @@ export default function AlarmPreviewScreen({ navigation, route }) {
     const challenge = selectRandomChallenge({ mode: alarm.challengeMode });
     const now = Date.now();
     allowNavigation.current = true;
-    navigation.navigate('PreviewChallengeInstruction', { alarmId, preview: true, challenge: { ...challenge, startedAt: new Date(now).toISOString(), deadlineAt: new Date(now + CHALLENGE_TIMEOUT_SECONDS * 1000).toISOString() } });
+    navigation.navigate('PreviewChallengeInstruction', { alarmId, preview: true, challengeMode: alarm.challengeMode, previewRerollCount: 0, previewChallengeHistory: [], challenge: { ...challenge, startedAt: new Date(now).toISOString(), deadlineAt: new Date(now + CHALLENGE_TIMEOUT_SECONDS * 1000).toISOString(), rerollCount: 0, remainingRerolls: MAX_CHALLENGE_REROLLS, challengeHistory: [] } });
   };
 
   return <ScreenContainer><View style={styles.center}><Text style={styles.preview}>Alarm Preview</Text><Text style={styles.title}>{alarm?.title || 'Loading alarm...'}</Text><Text style={styles.message}>This preview does not create or change an alarm session.</Text><PrimaryButton title="Start Challenge" onPress={startChallengePreview} style={styles.button} /><SecondaryButton title="Exit Preview" onPress={exitPreview} style={styles.exit} /></View></ScreenContainer>;

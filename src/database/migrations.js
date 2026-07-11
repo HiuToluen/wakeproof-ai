@@ -87,6 +87,27 @@ export async function runMigrations() {
   if (!sessionColumnNames.has('challenge_attempt_count')) {
     await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN challenge_attempt_count INTEGER NOT NULL DEFAULT 0;');
   }
+  if (!sessionColumnNames.has('challenge_reroll_count')) {
+    await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN challenge_reroll_count INTEGER NOT NULL DEFAULT 0;');
+  }
+  if (!sessionColumnNames.has('challenge_history')) {
+    await database.execAsync("ALTER TABLE alarm_sessions ADD COLUMN challenge_history TEXT NOT NULL DEFAULT '[]';");
+  }
+  if (!sessionColumnNames.has('offline_fallback_used')) {
+    await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN offline_fallback_used INTEGER NOT NULL DEFAULT 0;');
+  }
+  if (!sessionColumnNames.has('challenge_lockout_count')) {
+    await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN challenge_lockout_count INTEGER NOT NULL DEFAULT 0;');
+  }
+  if (!sessionColumnNames.has('challenge_locked_until')) {
+    await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN challenge_locked_until TEXT;');
+  }
+  if (!sessionColumnNames.has('challenge_network_retry_count')) {
+    await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN challenge_network_retry_count INTEGER NOT NULL DEFAULT 0;');
+  }
+  if (!sessionColumnNames.has('challenge_flow_mode')) {
+    await database.execAsync("ALTER TABLE alarm_sessions ADD COLUMN challenge_flow_mode TEXT NOT NULL DEFAULT 'AI';");
+  }
   await database.execAsync(`
     CREATE TABLE IF NOT EXISTS challenge_attempts (
       id TEXT PRIMARY KEY NOT NULL,
