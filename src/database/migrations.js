@@ -153,4 +153,14 @@ export async function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_alarm_sessions_queue_order
     ON alarm_sessions(status, scheduled_at, triggered_at, created_at, id);
   `);
+
+  // app_meta: generic key-value store used for guest credit storage
+  // (e.g. snooze_credits) and future app-level settings. Additive migration;
+  // existing tables are unaffected.
+  await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS app_meta (
+      key TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL
+    );
+  `);
 }
