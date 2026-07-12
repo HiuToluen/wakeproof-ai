@@ -1,22 +1,29 @@
-import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 
+import MockAdOverlay from '../../components/ads/MockAdOverlay';
 import PrimaryButton from '../../components/common/PrimaryButton';
 import ScreenContainer from '../../components/common/ScreenContainer';
 import SecondaryButton from '../../components/common/SecondaryButton';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCredits } from '../../hooks/useCredits';
+import { usePremium } from '../../hooks/usePremium';
 import { colors, spacing, typography } from '../../theme';
 import { mapFirebaseError } from '../../utils/firebaseErrorMapper';
 
 export default function SettingsScreen({ isGuest, onCreateAccount, onLogout, onSignIn }) {
   const navigation = useNavigation();
   const { hasGoogleProvider, hasPasswordProvider, linkGoogleAccount, user, userProfile, logout, updateDisplayName } = useAuth();
+  const { isPremium } = usePremium();
+  const { credits, watchAdAndEarn } = useCredits();
   const [isEditing, setIsEditing] = useState(false);
   const [displayName, setDisplayName] = useState(userProfile?.displayName || user?.displayName || '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [linkingGoogle, setLinkingGoogle] = useState(false);
+  // MOCK: local state for the inline mock ad overlay (class project).
+  const [adVisible, setAdVisible] = useState(false);
 
   const profile = userProfile || {};
   const isAuthenticated = Boolean(user);
@@ -64,6 +71,29 @@ export default function SettingsScreen({ isGuest, onCreateAccount, onLogout, onS
     }
   };
 
+  // MOCK: opens the inline mock reward-ad overlay. On completion, grants one
+  // snooze credit via watchAdAndEarn (Firestore for authed, SQLite for guest).
+  const openAd = () => {
+    setAdVisible(true);
+  };
+
+  const handleAdComplete = async () => {
+    setAdVisible(false);
+    try {
+      await watchAdAndEarn();
+    } catch (adError) {
+      setError(mapFirebaseError(adError));
+    }
+  };
+
+  const handleAdCancel = () => {
+    setAdVisible(false);
+  };
+
+  const goToPremium = () => {
+    navigation.navigate('Premium');
+  };
+
   return (
     <ScreenContainer avoidKeyboard scroll>
       <Text style={styles.heading}>Settings</Text>
@@ -87,6 +117,26 @@ export default function SettingsScreen({ isGuest, onCreateAccount, onLogout, onS
             <PrimaryButton title="Edit Display Name" onPress={() => setIsEditing(true)} style={styles.button} />
           )}
           <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Premium &amp; Credits</Text>
+            {isPremium ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={goToPremium}
+                style={({ pressed }) => [styles.premiumBadge, pressed && styles.premiumBadgePressed]}
+              >
+                <Text style={styles.premiumBadgeText}>★ Premium Active</Text>
+              </Pressable>
+            ) : (
+              <View>
+                <Text style={styles.value}>Snooze Credits: {credits}</Text>
+                {/* MOCK: watch a mock ad to earn one snooze credit. */}
+                <SecondaryButton title="Watch Ad to Earn Credit" onPress={openAd} style={styles.button} />
+                {/* MOCK: navigate to the mock IAP paywall (class project). */}
+                <SecondaryButton title="Upgrade to Premium" onPress={goToPremium} style={styles.button} />
+              </View>
+            )}
+          </View>
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Sign-in Methods</Text>
             <Text style={styles.value}>Google — {hasGoogleProvider ? 'Connected' : 'Not connected'}</Text>
             {!hasGoogleProvider ? <SecondaryButton title={linkingGoogle ? 'Linking Google...' : 'Link Google Account'} onPress={linkGoogle} disabled={linkingGoogle} style={styles.button} /> : null}
@@ -99,12 +149,27 @@ export default function SettingsScreen({ isGuest, onCreateAccount, onLogout, onS
         <View style={styles.card}>
           <Text style={styles.name}>Guest</Text>
           <Text style={styles.value}>Sign in to access account and premium features.</Text>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Premium &amp; Credits</Text>
+            <Text style={styles.value}>Snooze Credits: {credits}</Text>
+            {/* MOCK: watch a mock ad to earn one local snooze credit. */}
+            <SecondaryButton title="Watch Ad to Earn Credit" onPress={openAd} style={styles.button} />
+            <Text style={styles.notice}>Sign in to sync credits and access Premium.</Text>
+          </View>
           <PrimaryButton title="Sign In" onPress={onSignIn} style={styles.button} />
           <SecondaryButton title="Create Account" onPress={onCreateAccount} style={styles.button} />
           <SecondaryButton title="Return to Welcome" onPress={onLogout} style={styles.button} />
         </View>
       )}
       <Text style={styles.notice}>WakeProof currently uses local notifications for alarm delivery. Device battery optimization or force-stopping the app may affect alarm timing.</Text>
+      {/* MOCK: inline mock reward-ad overlay managed by SettingsScreen. */}
+      <MockAdOverlay
+        visible={adVisible}
+        adNumber={1}
+        totalAds={1}
+        onAdComplete={handleAdComplete}
+        onCancel={handleAdCancel}
+      />
     </ScreenContainer>
   );
 }
@@ -122,4 +187,7 @@ const styles = StyleSheet.create({
   error: { ...typography.body, color: colors.danger, marginTop: spacing.md },
   notice: { ...typography.body, color: colors.textSecondary, marginTop: spacing.lg },
   button: { marginTop: spacing.md },
+  premiumBadge: { alignSelf: 'flex-start', backgroundColor: colors.premium, borderRadius: 999, marginTop: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  premiumBadgePressed: { opacity: 0.85 },
+  premiumBadgeText: { ...typography.label, color: colors.white },
 });
