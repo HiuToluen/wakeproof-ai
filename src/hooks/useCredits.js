@@ -9,6 +9,7 @@
 // calling component (MockAdOverlay). This hook only handles the credit
 // addition after an ad completes - it does NOT render the overlay itself.
 import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { useAuth } from '../contexts/AuthContext';
 import { CREDITS_PER_AD, snoozeCreditCost } from '../constants/premiumConstants';
@@ -18,8 +19,11 @@ import * as creditService from '../services/creditService';
  * Hook for the snooze credit system.
  *
  * Returns:
- *   - credits: number. Reactive state, refreshed on mount and after every
- *     earn/spend operation. Reads from Firestore (authed) or SQLite (guest).
+ *   - credits: number. Reactive state, refreshed on screen focus and after
+ *     every earn/spend operation. Reads from Firestore (authed) or SQLite
+ *     (guest). The focus-based refresh ensures cross-screen reactivity so
+ *     that credit changes in one screen (e.g., snoozing) are visible when the
+ *     user navigates to another screen (e.g., Settings) without restart.
  *   - refreshCredits(): re-reads the balance from the credit service and
  *     updates state.
  *   - watchAdAndEarn(): adds `CREDITS_PER_AD` credits after an ad is watched
@@ -56,7 +60,22 @@ export function useCredits() {
     }
   }, [user]);
 
-  // Re-read whenever the auth state changes (guest <-> authed).
+  // Re-read the credit balance whenever the screen using this hook gains
+  // focus. This ensures cross-screen reactivity: when credits change in one
+  // screen (e.g., snoozing in AlarmRingingScreen), the other screen (e.g.,
+  // SettingsScreen) shows the fresh balance when the user navigates back
+  // without requiring an app restart. Also covers the initial mount (first
+  // focus) and auth state changes (guest <-> authed) when the screen is
+  // focused.
+  useFocusEffect(
+    useCallback(() => {
+      refreshCredits();
+    }, [refreshCredits])
+  );
+
+  // Also re-read when the authenticated user changes (e.g., sign in / sign
+  // out). This catches auth transitions that happen while the screen stays
+  // focused, complementing the focus-based refresh above.
   useEffect(() => {
     refreshCredits();
   }, [refreshCredits]);
