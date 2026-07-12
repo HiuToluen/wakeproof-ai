@@ -16,7 +16,20 @@ const defaults = { title: 'Wake up', hour: '07', minute: '00', repeatDays: [], i
 
 export default function AlarmFormScreen({ navigation, route }) {
   const alarmId = route.params?.alarmId;
-  const [form, setForm] = useState(defaults);
+  const [form, setForm] = useState(() => {
+    // When editing an existing alarm the useEffect below loads the saved
+    // values, so the initial state only matters for new alarms. For new
+    // alarms, honor optional prefillHour / prefillMinute route params (used
+    // by the Sleep Cycle Optimizer's "Create Alarm" action).
+    if (alarmId) return defaults;
+    const prefillHour = route.params?.prefillHour;
+    const prefillMinute = route.params?.prefillMinute;
+    return {
+      ...defaults,
+      ...(Number.isInteger(prefillHour) ? { hour: String(prefillHour).padStart(2, '0') } : {}),
+      ...(Number.isInteger(prefillMinute) ? { minute: String(prefillMinute).padStart(2, '0') } : {}),
+    };
+  });
   const [createdAt, setCreatedAt] = useState(null);
   const [loading, setLoading] = useState(Boolean(alarmId));
   const [saving, setSaving] = useState(false);

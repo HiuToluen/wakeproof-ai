@@ -9,6 +9,11 @@ const colors = {
   danger: '#DC2626',
   premium: '#F59E0B',
   white: '#FFFFFF',
+  // Sleep quality badge colors (used by Sleep Cycle Optimizer).
+  success: '#16A34A', // Ideal
+  info: '#3B82F6',    // Good
+  warning: '#F97316', // Short
+  // Minimal uses existing danger (red).
 };
 
 export default colors;
