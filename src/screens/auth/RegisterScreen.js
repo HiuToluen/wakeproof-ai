@@ -3,57 +3,60 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import PrimaryButton from '../../components/common/PrimaryButton';
 import ScreenContainer from '../../components/common/ScreenContainer';
+import { useAuth } from '../../contexts/AuthContext';
 import { colors, spacing, typography } from '../../theme';
+import { mapFirebaseError } from '../../utils/firebaseErrorMapper';
 
-export default function RegisterScreen({ navigation, onLoginSuccess }) {
-  const [fullName, setFullName] = useState('');
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export default function RegisterScreen({ navigation }) {
+  const { register } = useAuth();
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const validate = () => {
+    if (!displayName.trim()) return 'Display name is required.';
+    if (displayName.trim().length > 50) return 'Display name must be 50 characters or fewer.';
+    if (!emailPattern.test(email.trim().toLowerCase())) return 'Enter a valid email address.';
+    if (password.length < 6) return 'Password must be at least 6 characters.';
+    if (password !== confirmPassword) return 'Passwords do not match.';
+    return '';
+  };
+
+  const submit = async () => {
+    if (submitting) return;
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError('');
+    setSubmitting(true);
+    try {
+      await register({ displayName, email, password });
+    } catch (authError) {
+      setError(mapFirebaseError(authError));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <ScreenContainer scroll>
+    <ScreenContainer avoidKeyboard scroll>
       <View style={styles.content}>
         <Text style={styles.heading}>Create Account</Text>
-        <TextInput
-          autoCapitalize="words"
-          onChangeText={setFullName}
-          placeholder="Full name"
-          placeholderTextColor={colors.textSecondary}
-          style={styles.input}
-          value={fullName}
-        />
-        <TextInput
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          onChangeText={setEmail}
-          placeholder="Email"
-          placeholderTextColor={colors.textSecondary}
-          style={styles.input}
-          value={email}
-        />
-        <TextInput
-          autoCapitalize="none"
-          onChangeText={setPassword}
-          placeholder="Password"
-          placeholderTextColor={colors.textSecondary}
-          secureTextEntry
-          style={styles.input}
-          value={password}
-        />
-        <TextInput
-          autoCapitalize="none"
-          onChangeText={setConfirmPassword}
-          placeholder="Confirm password"
-          placeholderTextColor={colors.textSecondary}
-          secureTextEntry
-          style={styles.input}
-          value={confirmPassword}
-        />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <TextInput autoCapitalize="words" maxLength={50} onChangeText={setDisplayName} placeholder="Display Name" placeholderTextColor={colors.textSecondary} style={styles.input} value={displayName} />
+        <TextInput autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={setEmail} placeholder="Email" placeholderTextColor={colors.textSecondary} style={styles.input} value={email} />
+        <TextInput autoCapitalize="none" onChangeText={setPassword} placeholder="Password" placeholderTextColor={colors.textSecondary} secureTextEntry style={styles.input} value={password} />
+        <TextInput autoCapitalize="none" onChangeText={setConfirmPassword} placeholder="Confirm Password" placeholderTextColor={colors.textSecondary} secureTextEntry style={styles.input} value={confirmPassword} />
         <View style={styles.actions}>
-          <PrimaryButton title="Create Account" onPress={onLoginSuccess} />
-          <Pressable onPress={() => navigation.navigate('Login')} style={styles.textAction}>
+          <PrimaryButton title={submitting ? 'Creating Account...' : 'Create Account'} onPress={submit} disabled={submitting} />
+          <Pressable onPress={() => navigation.navigate('Login')} style={styles.textAction} disabled={submitting}>
             <Text style={styles.textActionLabel}>Already have an account? Sign In</Text>
           </Pressable>
         </View>
@@ -63,36 +66,11 @@ export default function RegisterScreen({ navigation, onLoginSuccess }) {
 }
 
 const styles = StyleSheet.create({
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  heading: {
-    ...typography.heading,
-    color: colors.textPrimary,
-    marginBottom: spacing.lg,
-  },
-  input: {
-    ...typography.body,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-    padding: spacing.md,
-  },
-  actions: {
-    gap: spacing.md,
-    marginTop: spacing.sm,
-  },
-  textAction: {
-    alignItems: 'center',
-    padding: spacing.sm,
-  },
-  textActionLabel: {
-    ...typography.label,
-    color: colors.primary,
-    textAlign: 'center',
-  },
+  content: { flex: 1, justifyContent: 'center' },
+  heading: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.lg },
+  error: { ...typography.body, color: colors.danger, marginBottom: spacing.md },
+  input: { ...typography.body, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.textPrimary, marginBottom: spacing.md, padding: spacing.md },
+  actions: { gap: spacing.md, marginTop: spacing.sm },
+  textAction: { alignItems: 'center', padding: spacing.sm },
+  textActionLabel: { ...typography.label, color: colors.primary, textAlign: 'center' },
 });

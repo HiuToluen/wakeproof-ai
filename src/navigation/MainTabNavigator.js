@@ -24,7 +24,7 @@ function TabIcon({ color, focused, routeName }) {
   );
 }
 
-export default function MainTabNavigator({ isGuest, onLogout }) {
+export default function MainTabNavigator({ isGuest, onAuthRequested, onLogout }) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -40,7 +40,7 @@ export default function MainTabNavigator({ isGuest, onLogout }) {
       <Tab.Screen name="Sleep" component={SleepScreen} />
       <Tab.Screen name="Progress" component={ProgressScreen} />
       <Tab.Screen name="Settings">
-        {() => <SettingsScreen isGuest={isGuest} onLogout={onLogout} />}
+        {() => <SettingsScreen isGuest={isGuest} onCreateAccount={() => onAuthRequested('Register')} onLogout={onLogout} onSignIn={() => onAuthRequested('Login')} />}
       </Tab.Screen>
     </Tab.Navigator>
   );

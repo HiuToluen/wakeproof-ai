@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import PrimaryButton from './src/components/common/PrimaryButton';
+import { AuthProvider } from './src/contexts/AuthContext';
 import { runMigrations } from './src/database/migrations';
 import { getActiveAlarmSession } from './src/database/alarmSessionRepository';
 import RootNavigator, { APP_MODES } from './src/navigation/RootNavigator';
@@ -17,7 +18,7 @@ import { colors, spacing, typography } from './src/theme';
 configureNotificationHandler();
 
 export default function App() {
-  const [appMode, setAppMode] = useState(APP_MODES.WELCOME); const [databaseState, setDatabaseState] = useState('INITIALIZING'); const [initializationError, setInitializationError] = useState(''); const [pendingResponses, setPendingResponses] = useState([]); const [processingResponse, setProcessingResponse] = useState(false); const [activeSession, setActiveSession] = useState(null); const processedResponses = useRef(new Set()); const activeRefreshRunning = useRef(false);
+  const [appMode, setAppMode] = useState(APP_MODES.WELCOME); const [authInitialRouteName, setAuthInitialRouteName] = useState('Welcome'); const [databaseState, setDatabaseState] = useState('INITIALIZING'); const [initializationError, setInitializationError] = useState(''); const [pendingResponses, setPendingResponses] = useState([]); const [processingResponse, setProcessingResponse] = useState(false); const [activeSession, setActiveSession] = useState(null); const processedResponses = useRef(new Set()); const activeRefreshRunning = useRef(false);
 
   const queueResponse = useCallback((response) => {
     const identifier = response?.notification?.request?.identifier;
@@ -73,7 +74,7 @@ export default function App() {
   let content;
   if (databaseState === 'INITIALIZING') content = <View style={styles.center}><ActivityIndicator color={colors.primary} /><Text style={styles.message}>Preparing WakeProof AI...</Text></View>;
   else if (databaseState === 'ERROR') content = <View style={styles.center}><Text style={styles.error}>Unable to initialize local alarm storage.</Text><Text style={styles.message}>{initializationError}</Text><PrimaryButton title="Retry" onPress={initializeDatabase} style={styles.button} /></View>;
-  else content = <NavigationContainer ref={navigationRef} onReady={() => setPendingResponses((responses) => [...responses])}><RootNavigator activeSession={activeSession} appMode={appMode} onContinueAsGuest={() => setAppMode(APP_MODES.GUEST)} onLoginSuccess={() => setAppMode(APP_MODES.AUTHENTICATED)} onLogout={() => setAppMode(APP_MODES.WELCOME)} /></NavigationContainer>;
+  else content = <AuthProvider><NavigationContainer ref={navigationRef} onReady={() => setPendingResponses((responses) => [...responses])}><RootNavigator activeSession={activeSession} appMode={appMode} authInitialRouteName={authInitialRouteName} onAuthRequested={(routeName) => { setAuthInitialRouteName(routeName); setAppMode(APP_MODES.WELCOME); }} onContinueAsGuest={() => setAppMode(APP_MODES.GUEST)} onLogout={() => { setAuthInitialRouteName('Welcome'); setAppMode(APP_MODES.WELCOME); }} /></NavigationContainer></AuthProvider>;
 
   return <SafeAreaProvider>{content}<StatusBar style="dark" /></SafeAreaProvider>;
 }

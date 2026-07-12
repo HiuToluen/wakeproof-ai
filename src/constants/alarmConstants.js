@@ -23,26 +23,26 @@ export const RINGTONES = [
   {
     id: 'BRR_BRR_PATAPIM',
     label: 'Brr Brr Patapim',
-    fileName: 'brr-brr-patapim-alarm-brainrot-nhacchuongwow.com.mp3',
-    source: require('../../assets/musics/brr-brr-patapim-alarm-brainrot-nhacchuongwow.com.mp3'),
+    fileName: 'brr_brr_patapim_alarm_brainrot.mp3',
+    source: require('../../assets/musics/brr_brr_patapim_alarm_brainrot.mp3'),
   },
   {
     id: 'DREAM_ALARM',
     label: 'Dream Alarm',
-    fileName: 'dream-alarm-nhacchuongwow.com.mp3',
-    source: require('../../assets/musics/dream-alarm-nhacchuongwow.com.mp3'),
+    fileName: 'dream_alarm.mp3',
+    source: require('../../assets/musics/dream_alarm.mp3'),
   },
   {
     id: 'ALARM_SIREN',
     label: 'Alarm Siren',
-    fileName: 'nhac_chuong_bao_thuc_coi_bao_dong-www_tiengdong_com.mp3',
-    source: require('../../assets/musics/nhac_chuong_bao_thuc_coi_bao_dong-www_tiengdong_com.mp3'),
+    fileName: 'nhac_chuong_bao_thuc_coi_bao_dong.mp3',
+    source: require('../../assets/musics/nhac_chuong_bao_thuc_coi_bao_dong.mp3'),
   },
   {
     id: 'LOUD_ALARM',
     label: 'Loud Alarm',
-    fileName: 'nhac_chuong_bao_thuc_cuc_to-www_tiengdong_com.mp3',
-    source: require('../../assets/musics/nhac_chuong_bao_thuc_cuc_to-www_tiengdong_com.mp3'),
+    fileName: 'nhac_chuong_bao_thuc_cuc_to.mp3',
+    source: require('../../assets/musics/nhac_chuong_bao_thuc_cuc_to.mp3'),
   },
 ];
 
