@@ -7,6 +7,7 @@ const colors = {
   textSecondary: '#6B7280',
   border: '#E5E7EB',
   danger: '#DC2626',
+  premium: '#F59E0B',
   white: '#FFFFFF',
 };
 
