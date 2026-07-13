@@ -45,12 +45,6 @@ const FEATURES = [
     description: 'Sync your alarms across all your devices.',
     comingSoon: true,
   },
-  {
-    id: 'custom-ringtones',
-    title: 'Custom Ringtones',
-    description: 'Wake up to your own sounds and music.',
-    comingSoon: true,
-  },
 ];
 
 /**

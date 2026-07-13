@@ -114,15 +114,13 @@ export function formatSleepTime(minutes) {
 }
 
 /**
- * Formats an hour/minute in 12-hour format with AM/PM.
- * Examples: formatTime(22, 15) -> "10:15 PM", formatTime(1, 15) -> "1:15 AM".
+ * Formats an hour/minute in 24-hour HH:mm format.
+ * Examples: formatTime(22, 15) -> "22:15", formatTime(1, 15) -> "01:15".
  *
  * @param {number} hour - 0-23
  * @param {number} minute - 0-59
  * @returns {string}
  */
 export function formatTime(hour, minute) {
-  const period = hour < 12 ? 'AM' : 'PM';
-  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-  return `${displayHour}:${String(minute).padStart(2, '0')} ${period}`;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }

@@ -1,6 +1,7 @@
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
-import { getRingtoneById } from '../constants/alarmConstants';
+import { DEFAULT_RINGTONE_ID, getRingtoneById } from '../constants/alarmConstants';
+import { resolveRingtoneSource } from './customRingtoneService';
 import { assertNoActiveAlarmSession } from './alarmMutationGuard';
 
 export const INITIAL_ALARM_VOLUME = 0.25;
@@ -40,6 +41,15 @@ export function startVolumeRamp(sessionId) {
   }, VOLUME_STEP_INTERVAL_MS);
 }
 
+function createPlayerWithFallback(ringtone) {
+  try {
+    return { nextPlayer: createAudioPlayer(ringtone.source, { downloadFirst: true }), resolvedRingtone: ringtone };
+  } catch {
+    const fallback = getRingtoneById(DEFAULT_RINGTONE_ID);
+    return { nextPlayer: createAudioPlayer(fallback.source, { downloadFirst: true }), resolvedRingtone: fallback };
+  }
+}
+
 export async function startAlarmPlayback(sessionId, ringtoneId) {
   if (player && activeSessionId === sessionId && activeRingtoneId === ringtoneId) {
     if (!volumeRampInterval && currentVolume < MAX_ALARM_VOLUME) startVolumeRamp(sessionId);
@@ -47,16 +57,26 @@ export async function startAlarmPlayback(sessionId, ringtoneId) {
   }
 
   await forceStopAlarmPlayback();
-  const ringtone = getRingtoneById(ringtoneId);
+  const ringtone = await resolveRingtoneSource(ringtoneId);
   await setAudioModeAsync({ interruptionMode: 'doNotMix', playsInSilentMode: true, shouldPlayInBackground: false });
-  player = createAudioPlayer(ringtone.source, { downloadFirst: true });
+  const resolved = createPlayerWithFallback(ringtone);
+  player = resolved.nextPlayer;
   activeSessionId = sessionId;
-  activeRingtoneId = ringtone.id;
+  activeRingtoneId = resolved.resolvedRingtone.id;
   resetAlarmVolume();
   player.loop = true;
-  player.play();
+  try { player.play(); }
+  catch {
+    const fallback = getRingtoneById(DEFAULT_RINGTONE_ID);
+    player.remove();
+    player = createAudioPlayer(fallback.source, { downloadFirst: true });
+    activeRingtoneId = fallback.id;
+    resetAlarmVolume();
+    player.loop = true;
+    player.play();
+  }
   startVolumeRamp(sessionId);
-  return { started: true, ringtoneId: ringtone.id };
+  return { started: true, ringtoneId: activeRingtoneId };
 }
 
 export async function stopAlarmPlayback(sessionId) {
@@ -87,14 +107,28 @@ export async function forceStopAlarmPlayback() {
 export async function previewRingtone(ringtoneId) {
   await assertNoActiveAlarmSession();
   await forceStopAlarmPlayback();
-  const ringtone = getRingtoneById(ringtoneId);
+  const ringtone = await resolveRingtoneSource(ringtoneId);
   await setAudioModeAsync({ interruptionMode: 'doNotMix', playsInSilentMode: true, shouldPlayInBackground: false });
-  player = createAudioPlayer(ringtone.source, { downloadFirst: true });
-  activeRingtoneId = ringtone.id;
+  const resolved = createPlayerWithFallback(ringtone);
+  player = resolved.nextPlayer;
+  activeRingtoneId = resolved.resolvedRingtone.id;
   player.loop = false;
   player.volume = 1;
-  player.play();
-  return { played: true, ringtoneId: ringtone.id };
+  try { player.play(); }
+  catch {
+    const fallback = getRingtoneById(DEFAULT_RINGTONE_ID);
+    player.remove();
+    player = createAudioPlayer(fallback.source, { downloadFirst: true });
+    activeRingtoneId = fallback.id;
+    player.loop = false;
+    player.volume = 1;
+    player.play();
+  }
+  return { played: true, ringtoneId: activeRingtoneId };
+}
+
+export async function stopRingtonePreviewIfActive(ringtoneId) {
+  if (activeRingtoneId === ringtoneId && !activeSessionId) await forceStopAlarmPlayback();
 }
 
 export const stopAlarmAudio = forceStopAlarmPlayback;

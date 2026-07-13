@@ -35,7 +35,7 @@ import { colors, spacing, typography } from '../../theme';
 const MODE_WAKE_AT = 'wake_at'; // "I want to wake at..."
 const MODE_SLEEP_AT = 'sleep_at'; // "I want to sleep at..."
 
-// Default target time: 7:00 AM (matches the spec example).
+// Default target time: 07:00.
 const DEFAULT_HOUR = '07';
 const DEFAULT_MINUTE = '00';
 

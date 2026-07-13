@@ -163,4 +163,15 @@ export async function runMigrations() {
       value TEXT NOT NULL
     );
   `);
+
+  await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS custom_ringtones (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      file_uri TEXT NOT NULL,
+      mime_type TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT
+    );
+  `);
 }
