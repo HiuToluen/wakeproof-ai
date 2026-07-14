@@ -16,11 +16,13 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 import TimeInput from '../../components/alarm/TimeInput';
 import PrimaryButton from '../../components/common/PrimaryButton';
 import ScreenContainer from '../../components/common/ScreenContainer';
 import { usePremium } from '../../hooks/usePremium';
+import { useTheme } from '../../hooks/useTheme';
 import {
   calculateBedtimes,
   calculateWakeTimes,
@@ -29,7 +31,6 @@ import {
   formatTime,
   SLEEP_CYCLE_MINUTES,
 } from '../../utils/sleepCycle';
-import { colors, spacing, typography } from '../../theme';
 
 // Mode toggle values.
 const MODE_WAKE_AT = 'wake_at'; // "I want to wake at..."
@@ -39,37 +40,33 @@ const MODE_SLEEP_AT = 'sleep_at'; // "I want to sleep at..."
 const DEFAULT_HOUR = '07';
 const DEFAULT_MINUTE = '00';
 
-// Quality badge background colors keyed by quality label.
-const QUALITY_COLORS = {
+// Quality badge background colors keyed by quality label. Built from the active
+// palette so badges stay legible/distinct in both light and dark themes.
+const getQualityColors = (colors) => ({
   Ideal: colors.success,
   Good: colors.info,
   Short: colors.warning,
   Minimal: colors.danger,
-};
+});
 
 // A small palette used to visually differentiate cycle segments in the timeline.
 // Cycles through four hues so adjacent blocks are always distinguishable.
-const TIMELINE_COLORS = [
+const getTimelineColors = (colors) => [
   colors.primary,
   colors.info,
   colors.success,
   colors.premium,
 ];
 
-// Phase labels that cycle through the sleep stages within each 90-min block.
-const PHASE_LABELS = ['Light', 'Deep', 'REM'];
-
 /**
  * Lock card shown to free users and guests. Features a premium amber accent,
  * a lock icon, explanatory text, and an "Upgrade to Premium" CTA.
  */
-function LockedSleepView() {
+function LockedSleepView({ styles, colors }) {
   const navigation = useNavigation();
 
   // Both free and guest users navigate to the PremiumScreen. For guests the
-  // PremiumScreen shows a "Sign in to subscribe" prompt that leads to auth,
-  // satisfying VAL-SLEEP-002 (free -> Premium) and VAL-SLEEP-004 (guest ->
-  // auth / Premium).
+  // PremiumScreen shows a "Sign in to subscribe" prompt that leads to auth.
   const handleUpgrade = () => {
     navigation.navigate('Premium');
   };
@@ -80,11 +77,14 @@ function LockedSleepView() {
       <View style={styles.lockCard}>
         <View style={styles.lockAccentBar} />
         <View style={styles.lockContent}>
-          <Text style={styles.lockIcon}>🔒</Text>
+          <View style={styles.lockIconCircle}>
+            <Ionicons name="lock-closed" size={30} color={colors.premium} />
+          </View>
           <Text style={styles.lockTitle}>Sleep Cycle Optimizer</Text>
-          <Text style={styles.lockText}>
-            Sleep Cycle Optimizer is a Premium feature
-          </Text>
+          <View style={styles.lockPremiumTag}>
+            <Ionicons name="star" size={13} color="#1A1200" />
+            <Text style={styles.lockPremiumTagText}>Premium feature</Text>
+          </View>
           <Text style={styles.lockSubtext}>
             Wake up at the ideal point in your sleep cycle with personalized
             bedtime and wake-time recommendations.
@@ -105,34 +105,56 @@ function LockedSleepView() {
  * duration, a color-coded quality badge, and a "Create Alarm" button. Tapping
  * the card body selects it (updating the timeline).
  */
-function SuggestionCard({ suggestion, selected, onSelect, onCreateAlarm }) {
-  const qualityColor = QUALITY_COLORS[suggestion.quality] || colors.textSecondary;
+function SuggestionCard({ suggestion, selected, onSelect, onCreateAlarm, styles, colors }) {
+  const qualityColor = getQualityColors(colors)[suggestion.quality] || colors.textSecondary;
+  const isIdeal = suggestion.quality === 'Ideal';
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ selected }}
       onPress={onSelect}
       style={({ pressed }) => [
         styles.card,
+        isIdeal && styles.cardIdeal,
         selected && styles.cardSelected,
         pressed && styles.cardPressed,
       ]}
     >
+      {isIdeal ? (
+        <View style={styles.recommendedTag}>
+          <Ionicons name="sparkles" size={12} color={colors.onPrimary} />
+          <Text style={styles.recommendedTagText}>Recommended</Text>
+        </View>
+      ) : null}
       <View style={styles.cardHeader}>
-        <Text style={styles.cardTime}>
-          {formatTime(suggestion.time.hour, suggestion.time.minute)}
-        </Text>
+        <View style={styles.cardTimeRow}>
+          <Ionicons
+            name={selected ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color={selected ? colors.primary : colors.textTertiary}
+          />
+          <Text style={styles.cardTime}>
+            {formatTime(suggestion.time.hour, suggestion.time.minute)}
+          </Text>
+        </View>
         <View style={[styles.qualityBadge, { backgroundColor: qualityColor }]}>
           <Text style={styles.qualityBadgeText}>{suggestion.quality}</Text>
         </View>
       </View>
       <View style={styles.cardDetails}>
-        <Text style={styles.detailLabel}>
-          {suggestion.cycles} {suggestion.cycles === 1 ? 'cycle' : 'cycles'}
-        </Text>
-        <Text style={styles.detailLabel}>
-          {formatSleepTime(suggestion.totalSleepMinutes)}
-        </Text>
+        <View style={styles.detailChip}>
+          <Ionicons name="refresh" size={14} color={colors.textSecondary} />
+          <Text style={styles.detailLabel}>
+            {suggestion.cycles} {suggestion.cycles === 1 ? 'cycle' : 'cycles'}
+          </Text>
+        </View>
+        <View style={styles.detailChip}>
+          <Ionicons name="bed-outline" size={14} color={colors.textSecondary} />
+          <Text style={styles.detailLabel}>
+            {formatSleepTime(suggestion.totalSleepMinutes)}
+          </Text>
+        </View>
       </View>
       <PrimaryButton
         title="Create Alarm"
@@ -148,8 +170,9 @@ function SuggestionCard({ suggestion, selected, onSelect, onCreateAlarm }) {
  * colored block per 90-minute sleep cycle, and a wake marker. The number of
  * cycle segments matches the selected suggestion's cycle count.
  */
-function SleepTimeline({ suggestion }) {
+function SleepTimeline({ suggestion, bedLabel, wakeLabel, styles, colors }) {
   const { cycles } = suggestion;
+  const timelineColors = getTimelineColors(colors);
 
   return (
     <View style={styles.timelineContainer}>
@@ -158,13 +181,8 @@ function SleepTimeline({ suggestion }) {
       </Text>
       <View style={styles.timelineBar}>
         {/* Fall-asleep buffer segment */}
-        <View
-          style={[
-            styles.timelineSegment,
-            styles.fallAsleepSegment,
-          ]}
-        >
-          <Text style={styles.segmentEmoji}>😴</Text>
+        <View style={[styles.timelineSegment, styles.fallAsleepSegment]}>
+          <Ionicons name="moon" size={14} color={colors.textSecondary} />
         </View>
         {/* One colored block per sleep cycle */}
         {Array.from({ length: cycles }).map((_, index) => (
@@ -173,20 +191,26 @@ function SleepTimeline({ suggestion }) {
             style={[
               styles.timelineSegment,
               styles.cycleSegment,
-              { backgroundColor: TIMELINE_COLORS[index % TIMELINE_COLORS.length] },
+              { backgroundColor: timelineColors[index % timelineColors.length] },
             ]}
           >
             <Text style={styles.cycleSegmentText}>{index + 1}</Text>
           </View>
         ))}
         {/* Wake marker */}
-        <View
-          style={[
-            styles.timelineSegment,
-            styles.wakeSegment,
-          ]}
-        >
-          <Text style={styles.segmentEmoji}>🔔</Text>
+        <View style={[styles.timelineSegment, styles.wakeSegment]}>
+          <Ionicons name="alarm" size={14} color={colors.onPrimary} />
+        </View>
+      </View>
+      {/* Bedtime / wake-time endpoint labels under the bar */}
+      <View style={styles.timelineEndpoints}>
+        <View style={styles.endpoint}>
+          <Text style={styles.endpointLabel}>Bedtime</Text>
+          <Text style={styles.endpointTime}>{bedLabel}</Text>
+        </View>
+        <View style={[styles.endpoint, styles.endpointRight]}>
+          <Text style={styles.endpointLabel}>Wake</Text>
+          <Text style={styles.endpointTime}>{wakeLabel}</Text>
         </View>
       </View>
       <View style={styles.timelineLegend}>
@@ -213,7 +237,7 @@ function SleepTimeline({ suggestion }) {
 /**
  * The full sleep cycle optimizer for premium users.
  */
-function SleepOptimizer() {
+function SleepOptimizer({ styles, colors }) {
   const navigation = useNavigation();
   const [mode, setMode] = useState(MODE_WAKE_AT);
   const [hour, setHour] = useState(DEFAULT_HOUR);
@@ -262,40 +286,36 @@ function SleepOptimizer() {
           : 'Find the best wake times for your target bedtime.'}
       </Text>
 
-      {/* Mode toggle */}
+      {/* Mode toggle — segmented control */}
       <View style={styles.modeToggle}>
         <Pressable
           accessibilityRole="button"
+          accessibilityState={{ selected: mode === MODE_WAKE_AT }}
           onPress={() => handleModeChange(MODE_WAKE_AT)}
-          style={[
-            styles.modeOption,
-            mode === MODE_WAKE_AT && styles.modeOptionActive,
-          ]}
+          style={[styles.modeOption, mode === MODE_WAKE_AT && styles.modeOptionActive]}
         >
-          <Text
-            style={[
-              styles.modeText,
-              mode === MODE_WAKE_AT && styles.modeTextActive,
-            ]}
-          >
-            I want to wake at...
+          <Ionicons
+            name="sunny-outline"
+            size={16}
+            color={mode === MODE_WAKE_AT ? colors.onPrimary : colors.textSecondary}
+          />
+          <Text style={[styles.modeText, mode === MODE_WAKE_AT && styles.modeTextActive]}>
+            Wake at
           </Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
+          accessibilityState={{ selected: mode === MODE_SLEEP_AT }}
           onPress={() => handleModeChange(MODE_SLEEP_AT)}
-          style={[
-            styles.modeOption,
-            mode === MODE_SLEEP_AT && styles.modeOptionActive,
-          ]}
+          style={[styles.modeOption, mode === MODE_SLEEP_AT && styles.modeOptionActive]}
         >
-          <Text
-            style={[
-              styles.modeText,
-              mode === MODE_SLEEP_AT && styles.modeTextActive,
-            ]}
-          >
-            I want to sleep at...
+          <Ionicons
+            name="moon-outline"
+            size={16}
+            color={mode === MODE_SLEEP_AT ? colors.onPrimary : colors.textSecondary}
+          />
+          <Text style={[styles.modeText, mode === MODE_SLEEP_AT && styles.modeTextActive]}>
+            Sleep at
           </Text>
         </Pressable>
       </View>
@@ -325,13 +345,27 @@ function SleepOptimizer() {
             selected={index === safeIndex}
             onSelect={() => handleSelectCard(index)}
             onCreateAlarm={() => handleCreateAlarm(suggestion)}
+            styles={styles}
+            colors={colors}
           />
         ))}
       </View>
 
-      {/* Timeline visualization for the selected suggestion */}
+      {/* Timeline visualization for the selected suggestion. In "wake at" mode
+          the suggestion time is the bedtime and the entered time is the wake
+          time; in "sleep at" mode it is reversed. */}
       {selectedSuggestion ? (
-        <SleepTimeline suggestion={selectedSuggestion} />
+        <SleepTimeline
+          suggestion={selectedSuggestion}
+          bedLabel={mode === MODE_WAKE_AT
+            ? formatTime(selectedSuggestion.time.hour, selectedSuggestion.time.minute)
+            : formatTime(Number(hour) || 0, Number(minute) || 0)}
+          wakeLabel={mode === MODE_WAKE_AT
+            ? formatTime(Number(hour) || 0, Number(minute) || 0)
+            : formatTime(selectedSuggestion.time.hour, selectedSuggestion.time.minute)}
+          styles={styles}
+          colors={colors}
+        />
       ) : null}
     </ScreenContainer>
   );
@@ -343,15 +377,17 @@ function SleepOptimizer() {
  */
 export default function SleepScreen() {
   const { isPremium } = usePremium();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   if (!isPremium) {
-    return <LockedSleepView />;
+    return <LockedSleepView styles={styles} colors={theme.colors} />;
   }
 
-  return <SleepOptimizer />;
+  return <SleepOptimizer styles={styles} colors={theme.colors} />;
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, spacing, typography, radius }) => StyleSheet.create({
   heading: {
     ...typography.heading,
     color: colors.textPrimary,
@@ -365,7 +401,7 @@ const styles = StyleSheet.create({
   lockCard: {
     backgroundColor: colors.surface,
     borderColor: colors.premium,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     borderWidth: 1,
     marginTop: spacing.lg,
     overflow: 'hidden',
@@ -379,57 +415,74 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     alignItems: 'center',
   },
-  lockIcon: {
-    fontSize: 48,
+  lockIconCircle: {
+    alignItems: 'center',
+    backgroundColor: colors.primaryMuted,
+    borderRadius: radius.pill,
+    height: 64,
+    justifyContent: 'center',
     marginBottom: spacing.md,
+    width: 64,
   },
   lockTitle: {
     ...typography.heading,
     color: colors.textPrimary,
     textAlign: 'center',
   },
-  lockText: {
-    ...typography.label,
-    color: colors.premium,
+  lockPremiumTag: {
+    alignItems: 'center',
+    backgroundColor: colors.premium,
+    borderRadius: radius.pill,
+    flexDirection: 'row',
+    gap: spacing.xs,
     marginTop: spacing.sm,
-    textAlign: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  lockPremiumTagText: {
+    color: '#1A1200',
+    fontSize: 12,
+    fontWeight: '700',
   },
   lockSubtext: {
     ...typography.body,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     textAlign: 'center',
   },
   lockCta: {
     marginTop: spacing.lg,
+    alignSelf: 'stretch',
   },
-  // --- Mode toggle ---
+  // --- Mode toggle (segmented control) ---
   modeToggle: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
     flexDirection: 'row',
     marginTop: spacing.lg,
-    gap: spacing.sm,
+    padding: spacing.xs,
   },
   modeOption: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: radius.sm,
     flex: 1,
-    paddingVertical: spacing.md,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
   },
   modeOptionActive: {
     backgroundColor: colors.primary,
-    borderColor: colors.primary,
   },
   modeText: {
     ...typography.label,
     color: colors.textSecondary,
-    fontSize: 13,
+    fontSize: 14,
     textAlign: 'center',
   },
   modeTextActive: {
-    color: colors.white,
+    color: colors.onPrimary,
   },
   // --- Time picker ---
   timePickerContainer: {
@@ -454,9 +507,14 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     borderWidth: 1,
     padding: spacing.md,
+  },
+  // Highlighted "Ideal" suggestion: amber accent border + tinted surface.
+  cardIdeal: {
+    borderColor: colors.premium,
+    backgroundColor: colors.surfaceAlt,
   },
   cardSelected: {
     borderColor: colors.primary,
@@ -465,29 +523,55 @@ const styles = StyleSheet.create({
   cardPressed: {
     opacity: 0.85,
   },
+  recommendedTag: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.premium,
+    borderRadius: radius.pill,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  recommendedTagText: {
+    color: colors.onPrimary,
+    fontSize: 11,
+    fontWeight: '700',
+  },
   cardHeader: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  cardTimeRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
   cardTime: {
     ...typography.heading,
     color: colors.textPrimary,
   },
   qualityBadge: {
-    borderRadius: 999,
+    borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
   qualityBadgeText: {
-    color: colors.white,
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
   cardDetails: {
     flexDirection: 'row',
     gap: spacing.lg,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
+  },
+  detailChip: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.xs,
   },
   detailLabel: {
     ...typography.body,
@@ -500,7 +584,7 @@ const styles = StyleSheet.create({
   timelineContainer: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     borderWidth: 1,
     marginTop: spacing.xl,
     padding: spacing.md,
@@ -514,7 +598,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     height: 40,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     overflow: 'hidden',
   },
   timelineSegment: {
@@ -535,12 +619,31 @@ const styles = StyleSheet.create({
     width: 24,
   },
   cycleSegmentText: {
-    color: colors.white,
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },
-  segmentEmoji: {
-    fontSize: 16,
+  timelineEndpoints: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+  },
+  endpoint: {
+    alignItems: 'flex-start',
+  },
+  endpointRight: {
+    alignItems: 'flex-end',
+  },
+  endpointLabel: {
+    color: colors.textTertiary,
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  endpointTime: {
+    ...typography.label,
+    color: colors.textPrimary,
+    marginTop: 2,
   },
   timelineLegend: {
     flexDirection: 'row',

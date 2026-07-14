@@ -16,11 +16,11 @@
 //     back gesture. The back gesture is disabled while the countdown is
 //     running so the user cannot skip the ad early. Once canClose is true
 //     the back gesture fires onCancel, letting the caller abort the flow.
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MOCK_AD_DURATION_SECONDS } from '../../constants/premiumConstants';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 
 /**
  * Full-screen mock ad overlay. Renders a dark semi-transparent background,
@@ -42,6 +42,9 @@ export default function MockAdOverlay({
   onAdComplete,
   onCancel,
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [countdown, setCountdown] = useState(MOCK_AD_DURATION_SECONDS);
   const [canClose, setCanClose] = useState(false);
 
@@ -127,10 +130,12 @@ export default function MockAdOverlay({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, spacing, typography, radius }) => StyleSheet.create({
+  // Ad backdrop — intentionally heavy dark scrim regardless of theme to
+  // isolate the mock ad experience (matches a real full-screen ad).
   backdrop: {
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
     flex: 1,
     justifyContent: 'center',
     padding: spacing.lg,
@@ -138,7 +143,7 @@ const styles = StyleSheet.create({
   overlay: {
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     padding: spacing.lg,
     width: '100%',
     maxWidth: 400,
@@ -157,15 +162,16 @@ const styles = StyleSheet.create({
   placeholder: {
     alignItems: 'center',
     justifyContent: 'center',
+    // colors.premium provides the amber/gold tint for the mock ad placeholder
     backgroundColor: colors.premium,
-    borderRadius: 12,
+    borderRadius: radius.md,
     height: 200,
     marginTop: spacing.lg,
     width: '100%',
   },
   placeholderText: {
     ...typography.heading,
-    color: colors.white,
+    color: '#1A1200', // dark text on amber placeholder for contrast
     textAlign: 'center',
   },
   countdown: {
@@ -176,7 +182,7 @@ const styles = StyleSheet.create({
   closeButton: {
     alignItems: 'center',
     backgroundColor: colors.primary,
-    borderRadius: 12,
+    borderRadius: radius.md,
     marginTop: spacing.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
@@ -190,7 +196,7 @@ const styles = StyleSheet.create({
   },
   closeText: {
     ...typography.label,
-    color: colors.white,
+    color: colors.onPrimary,
   },
   closeTextDisabled: {
     ...typography.label,

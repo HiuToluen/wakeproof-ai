@@ -4,16 +4,19 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import WelcomeScreen from '../screens/onboarding/WelcomeScreen';
-import { colors } from '../theme';
+import { useTheme } from '../hooks/useTheme';
 
 const Stack = createNativeStackNavigator();
 
 export default function AuthNavigator({ initialRouteName = 'Welcome', onContinueAsGuest }) {
+  const { colors } = useTheme();
   return (
     <Stack.Navigator
       initialRouteName={initialRouteName}
       screenOptions={{
         contentStyle: { backgroundColor: colors.background },
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.textPrimary,
         headerShadowVisible: false,
       }}
     >

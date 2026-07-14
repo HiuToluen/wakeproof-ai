@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, Vibration, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -10,11 +10,13 @@ import { restartAlarmPlayback, stopAlarmPlayback } from '../../services/alarmAud
 import { assertNoActiveAlarmSession } from '../../services/alarmMutationGuard';
 import { CHALLENGE_TIMEOUT_SECONDS, MAX_CHALLENGE_REROLLS } from '../../constants/challengeConstants';
 import { selectRandomChallenge } from '../../services/challengeService';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 
 const PREVIEW_VIBRATION = [0, 700, 300, 700, 300, 1200];
 
 export default function AlarmPreviewScreen({ navigation, route }) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { alarmId } = route.params ?? {};
   const [alarm, setAlarm] = useState(null);
   const allowNavigation = useRef(false);
@@ -56,4 +58,4 @@ export default function AlarmPreviewScreen({ navigation, route }) {
   return <ScreenContainer><View style={styles.center}><Text style={styles.preview}>Alarm Preview</Text><Text style={styles.title}>{alarm?.title || 'Loading alarm...'}</Text><Text style={styles.message}>This preview does not create or change an alarm session.</Text><PrimaryButton title="Start Challenge" onPress={startChallengePreview} style={styles.button} /><SecondaryButton title="Exit Preview" onPress={exitPreview} style={styles.exit} /></View></ScreenContainer>;
 }
 
-const styles = StyleSheet.create({ center: { alignItems: 'center', flex: 1, justifyContent: 'center' }, preview: { ...typography.label, color: colors.primary }, title: { ...typography.heading, color: colors.textPrimary, marginTop: spacing.md }, message: { ...typography.body, color: colors.textSecondary, marginTop: spacing.md, textAlign: 'center' }, button: { marginTop: spacing.xl, width: '100%' }, exit: { marginTop: spacing.md, width: '100%' } });
+const createStyles = ({ colors, spacing, typography }) => StyleSheet.create({ center: { alignItems: 'center', flex: 1, justifyContent: 'center' }, preview: { ...typography.label, color: colors.primary }, title: { ...typography.heading, color: colors.textPrimary, marginTop: spacing.md }, message: { ...typography.body, color: colors.textSecondary, marginTop: spacing.md, textAlign: 'center' }, button: { marginTop: spacing.xl, width: '100%' }, exit: { marginTop: spacing.md, width: '100%' } });

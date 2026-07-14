@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, BackHandler, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
 import PrimaryButton from '../../components/common/PrimaryButton';
 import SecondaryButton from '../../components/common/SecondaryButton';
+import { useTheme } from '../../hooks/useTheme';
 import { prepareChallengeAlerts, reconcileChallengeScreenSession, returnChallengeToRinging } from '../../services/challengeFlowService';
-import { colors, spacing, typography } from '../../theme';
 
 function getRemaining(deadlineAt) {
   return Math.max(0, Math.ceil((new Date(deadlineAt).getTime() - Date.now()) / 1000));
@@ -22,6 +22,9 @@ export default function CameraChallengeScreen({ navigation, route }) {
   const transitionStarted = useRef(false);
   const operationId = useRef(0);
   const [challengeAllowed, setChallengeAllowed] = useState(true);
+
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const timeout = useCallback(async () => {
     if (transitionStarted.current) return;
@@ -80,4 +83,25 @@ export default function CameraChallengeScreen({ navigation, route }) {
   return <View style={styles.container}><CameraView ref={cameraRef} style={styles.camera} facing={facing} mode="picture" onCameraReady={() => setCameraReady(true)} /><View pointerEvents="none" style={styles.overlay}><Text style={styles.countdown}>{remaining}s</Text><Text style={styles.instruction}>{challenge.instruction}</Text></View><View style={styles.controls}><Pressable style={styles.flip} onPress={() => setFacing((current) => current === 'back' ? 'front' : 'back')} disabled={capturing}><Text style={styles.controlText}>Flip</Text></Pressable><Pressable style={[styles.capture, capturing && styles.disabled]} onPress={capture} disabled={capturing || !cameraReady || remaining <= 0}><Text style={styles.controlText}>{capturing ? 'Saving...' : 'Capture'}</Text></Pressable></View></View>;
 }
 
-const styles = StyleSheet.create({ container: { backgroundColor: colors.textPrimary, flex: 1 }, camera: { flex: 1 }, center: { alignItems: 'center', backgroundColor: colors.background, flex: 1, justifyContent: 'center', padding: spacing.lg }, permission: { backgroundColor: colors.background, flex: 1, justifyContent: 'center', padding: spacing.lg }, title: { ...typography.heading, color: colors.textPrimary, textAlign: 'center' }, message: { ...typography.body, color: colors.textSecondary, marginTop: spacing.md, textAlign: 'center' }, button: { marginTop: spacing.md }, overlay: { backgroundColor: 'rgba(0,0,0,0.45)', left: 0, padding: spacing.lg, paddingTop: spacing.xxl, position: 'absolute', right: 0, top: 0 }, countdown: { ...typography.heading, color: colors.white, textAlign: 'center' }, instruction: { ...typography.body, color: colors.white, marginTop: spacing.sm, textAlign: 'center' }, controls: { alignItems: 'center', bottom: spacing.xl, flexDirection: 'row', gap: spacing.lg, justifyContent: 'center', left: 0, position: 'absolute', right: 0 }, flip: { backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 12, padding: spacing.md }, capture: { backgroundColor: colors.primary, borderRadius: 16, padding: spacing.lg }, disabled: { opacity: 0.5 }, controlText: { ...typography.label, color: colors.white } });
+const createStyles = ({ colors, spacing, typography, radius }) => StyleSheet.create({
+  // Dark bg for full-screen camera container — keeps viewfinder black in both light and dark themes.
+  container: { backgroundColor: '#000', flex: 1 },
+  camera: { flex: 1 },
+  center: { alignItems: 'center', backgroundColor: colors.background, flex: 1, justifyContent: 'center', padding: spacing.lg },
+  permission: { backgroundColor: colors.background, flex: 1, justifyContent: 'center', padding: spacing.lg },
+  title: { ...typography.heading, color: colors.textPrimary, textAlign: 'center' },
+  message: { ...typography.body, color: colors.textSecondary, marginTop: spacing.md, textAlign: 'center' },
+  button: { marginTop: spacing.md },
+  // Camera overlay: always dark bg + white text for high contrast over any camera feed,
+  // regardless of app theme. Do NOT switch to light bg in light mode — live camera images
+  // are unpredictable and light overlays become unreadable on bright scenes.
+  overlay: { backgroundColor: 'rgba(0,0,0,0.45)', left: 0, padding: spacing.lg, paddingTop: spacing.xxl, position: 'absolute', right: 0, top: 0 },
+  countdown: { ...typography.heading, color: '#FFFFFF', textAlign: 'center' },
+  instruction: { ...typography.body, color: '#FFFFFF', marginTop: spacing.sm, textAlign: 'center' },
+  controls: { alignItems: 'center', bottom: spacing.xl, flexDirection: 'row', gap: spacing.lg, justifyContent: 'center', left: 0, position: 'absolute', right: 0 },
+  // Flip button: dark semi-transparent pill — readable on any camera image in both modes.
+  flip: { backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: radius.md, padding: spacing.md },
+  capture: { backgroundColor: colors.primary, borderRadius: radius.lg, padding: spacing.lg },
+  disabled: { opacity: 0.5 },
+  controlText: { ...typography.label, color: '#FFFFFF' },
+});

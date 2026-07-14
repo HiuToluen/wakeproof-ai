@@ -1,6 +1,7 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 
 function formatValue(value, maximum) {
   const numericValue = Number(value);
@@ -10,6 +11,9 @@ function formatValue(value, maximum) {
 }
 
 export default function TimeInput({ hour, minute, onHourChange, onMinuteChange }) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <View style={styles.container}>
       <TextInput
@@ -37,7 +41,7 @@ export default function TimeInput({ hour, minute, onHourChange, onMinuteChange }
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, spacing, typography, radius }) => StyleSheet.create({
   container: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -46,7 +50,7 @@ const styles = StyleSheet.create({
     ...typography.heading,
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 1,
     color: colors.textPrimary,
     padding: spacing.md,

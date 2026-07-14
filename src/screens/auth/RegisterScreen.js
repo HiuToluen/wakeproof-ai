@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import PrimaryButton from '../../components/common/PrimaryButton';
 import ScreenContainer from '../../components/common/ScreenContainer';
 import { useAuth } from '../../contexts/AuthContext';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 import { mapFirebaseError } from '../../utils/firebaseErrorMapper';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -17,6 +17,9 @@ export default function RegisterScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const validate = () => {
     if (!displayName.trim()) return 'Display name is required.';
@@ -50,10 +53,43 @@ export default function RegisterScreen({ navigation }) {
       <View style={styles.content}>
         <Text style={styles.heading}>Create Account</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        <TextInput autoCapitalize="words" maxLength={50} onChangeText={setDisplayName} placeholder="Display Name" placeholderTextColor={colors.textSecondary} style={styles.input} value={displayName} />
-        <TextInput autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={setEmail} placeholder="Email" placeholderTextColor={colors.textSecondary} style={styles.input} value={email} />
-        <TextInput autoCapitalize="none" onChangeText={setPassword} placeholder="Password" placeholderTextColor={colors.textSecondary} secureTextEntry style={styles.input} value={password} />
-        <TextInput autoCapitalize="none" onChangeText={setConfirmPassword} placeholder="Confirm Password" placeholderTextColor={colors.textSecondary} secureTextEntry style={styles.input} value={confirmPassword} />
+        <TextInput
+          autoCapitalize="words"
+          maxLength={50}
+          onChangeText={setDisplayName}
+          placeholder="Display Name"
+          placeholderTextColor={theme.colors.textSecondary}
+          style={styles.input}
+          value={displayName}
+        />
+        <TextInput
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          onChangeText={setEmail}
+          placeholder="Email"
+          placeholderTextColor={theme.colors.textSecondary}
+          style={styles.input}
+          value={email}
+        />
+        <TextInput
+          autoCapitalize="none"
+          onChangeText={setPassword}
+          placeholder="Password"
+          placeholderTextColor={theme.colors.textSecondary}
+          secureTextEntry
+          style={styles.input}
+          value={password}
+        />
+        <TextInput
+          autoCapitalize="none"
+          onChangeText={setConfirmPassword}
+          placeholder="Confirm Password"
+          placeholderTextColor={theme.colors.textSecondary}
+          secureTextEntry
+          style={styles.input}
+          value={confirmPassword}
+        />
         <View style={styles.actions}>
           <PrimaryButton title={submitting ? 'Creating Account...' : 'Create Account'} onPress={submit} disabled={submitting} />
           <Pressable onPress={() => navigation.navigate('Login')} style={styles.textAction} disabled={submitting}>
@@ -65,11 +101,20 @@ export default function RegisterScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, spacing, typography, radius }) => StyleSheet.create({
   content: { flex: 1, justifyContent: 'center' },
   heading: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.lg },
   error: { ...typography.body, color: colors.danger, marginBottom: spacing.md },
-  input: { ...typography.body, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.textPrimary, marginBottom: spacing.md, padding: spacing.md },
+  input: {
+    ...typography.body,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
   actions: { gap: spacing.md, marginTop: spacing.sm },
   textAction: { alignItems: 'center', padding: spacing.sm },
   textActionLabel: { ...typography.label, color: colors.primary, textAlign: 'center' },

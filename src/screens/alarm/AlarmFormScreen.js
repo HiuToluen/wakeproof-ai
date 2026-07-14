@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import DaySelector from '../../components/alarm/DaySelector';
@@ -11,11 +11,13 @@ import { previewRingtone, releaseAlarmAudio, stopRingtonePreviewIfActive } from 
 import { cancelAlarmSchedule, scheduleAlarm } from '../../services/alarmSchedulerService';
 import { assertNoActiveAlarmSession } from '../../services/alarmMutationGuard';
 import { deleteCustomRingtone, importCustomRingtone, isCustomRingtoneAvailable, isCustomRingtoneId, listCustomRingtones } from '../../services/customRingtoneService';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 
 const defaults = { title: 'Wake up', hour: '07', minute: '00', repeatDays: [], isEnabled: true, snoozeDuration: '5', maxSnooze: '2', challengeMode: CHALLENGE_MODES.RANDOM, ringtoneId: DEFAULT_RINGTONE_ID };
 
 export default function AlarmFormScreen({ navigation, route }) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const alarmId = route.params?.alarmId;
   const [form, setForm] = useState(() => {
     // When editing an existing alarm the useEffect below loads the saved
@@ -159,4 +161,4 @@ export default function AlarmFormScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({ flex: { flex: 1 }, heading: { ...typography.heading, color: colors.textPrimary }, message: { ...typography.body, color: colors.textSecondary }, error: { ...typography.body, color: colors.danger, marginTop: spacing.md }, unavailable: { ...typography.body, color: colors.danger, marginBottom: spacing.sm }, label: { ...typography.label, color: colors.textPrimary, marginBottom: spacing.sm, marginTop: spacing.lg }, subLabel: { ...typography.label, color: colors.textPrimary, marginBottom: spacing.sm, marginTop: spacing.md }, input: { ...typography.body, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.textPrimary, padding: spacing.md }, options: { gap: spacing.sm }, option: { borderColor: colors.border, borderRadius: 12, borderWidth: 1, padding: spacing.md }, selectedOption: { backgroundColor: colors.primary, borderColor: colors.primary }, optionText: { color: colors.textPrimary }, selectedOptionText: { color: colors.white }, customRow: { alignItems: 'stretch', flexDirection: 'row', gap: spacing.sm }, customOption: { borderColor: colors.border, borderRadius: 12, borderWidth: 1, flex: 1, padding: spacing.md }, deleteButton: { alignItems: 'center', borderColor: colors.danger, borderRadius: 12, borderWidth: 1, justifyContent: 'center', paddingHorizontal: spacing.md }, deleteText: { color: colors.danger, fontWeight: '700' }, addRingtone: { marginBottom: spacing.sm }, switchRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, save: { marginTop: spacing.xl } });
+const createStyles = ({ colors, spacing, typography, radius }) => StyleSheet.create({ flex: { flex: 1 }, heading: { ...typography.heading, color: colors.textPrimary }, message: { ...typography.body, color: colors.textSecondary }, error: { ...typography.body, color: colors.danger, marginTop: spacing.md }, unavailable: { ...typography.body, color: colors.danger, marginBottom: spacing.sm }, label: { ...typography.label, color: colors.textPrimary, marginBottom: spacing.sm, marginTop: spacing.lg }, subLabel: { ...typography.label, color: colors.textPrimary, marginBottom: spacing.sm, marginTop: spacing.md }, input: { ...typography.body, backgroundColor: colors.surfaceAlt, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, color: colors.textPrimary, padding: spacing.md }, options: { gap: spacing.sm }, option: { borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, padding: spacing.md }, selectedOption: { backgroundColor: colors.primaryMuted, borderColor: colors.primary }, optionText: { color: colors.textPrimary }, selectedOptionText: { color: colors.primary }, customRow: { alignItems: 'stretch', flexDirection: 'row', gap: spacing.sm }, customOption: { borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, flex: 1, padding: spacing.md }, deleteButton: { alignItems: 'center', borderColor: colors.danger, borderRadius: radius.md, borderWidth: 1, justifyContent: 'center', paddingHorizontal: spacing.md }, deleteText: { color: colors.danger, fontWeight: '700' }, addRingtone: { marginBottom: spacing.sm }, switchRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, save: { marginTop: spacing.xl } });

@@ -1,8 +1,12 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 
 export default function SecondaryButton({ title, onPress, disabled = false, style }) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -15,24 +19,27 @@ export default function SecondaryButton({ title, onPress, disabled = false, styl
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  pressed: {
-    backgroundColor: colors.border,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  text: {
-    ...typography.label,
-    color: colors.primary,
-  },
-});
+const createStyles = ({ colors, spacing, typography, radius }) =>
+  StyleSheet.create({
+    button: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.primary,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      minHeight: 48, // >=44pt touch target
+      justifyContent: 'center',
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+    },
+    pressed: {
+      backgroundColor: colors.primaryMuted,
+    },
+    disabled: {
+      opacity: 0.5,
+    },
+    text: {
+      ...typography.label,
+      color: colors.primary,
+    },
+  });

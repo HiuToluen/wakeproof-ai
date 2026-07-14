@@ -1,9 +1,13 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DAYS } from '../../constants/alarmConstants';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 
 export default function DaySelector({ selectedDays, onChange }) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const toggleDay = (value) => {
     const nextDays = selectedDays.includes(value)
       ? selectedDays.filter((day) => day !== value)
@@ -31,7 +35,7 @@ export default function DaySelector({ selectedDays, onChange }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, spacing, typography }) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -40,6 +44,7 @@ const styles = StyleSheet.create({
   day: {
     alignItems: 'center',
     borderColor: colors.border,
+    // 20 doesn't map to a radius token — kept as literal for circular appearance on 40×40 chip
     borderRadius: 20,
     borderWidth: 1,
     height: 40,
@@ -55,6 +60,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   selectedLabel: {
-    color: colors.white,
+    color: colors.onPrimary,
   },
 });
