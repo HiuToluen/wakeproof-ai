@@ -1,5 +1,5 @@
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 
 import MockAdOverlay from '../../components/ads/MockAdOverlay';
@@ -9,14 +9,25 @@ import SecondaryButton from '../../components/common/SecondaryButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCredits } from '../../hooks/useCredits';
 import { usePremium } from '../../hooks/usePremium';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
+import { THEME_MODES } from '../../contexts/ThemeContext';
 import { mapFirebaseError } from '../../utils/firebaseErrorMapper';
+
+// Appearance options rendered as a segmented control (Light / Dark / System).
+const APPEARANCE_OPTIONS = [
+  { mode: THEME_MODES.LIGHT, label: 'Light' },
+  { mode: THEME_MODES.DARK, label: 'Dark' },
+  { mode: THEME_MODES.SYSTEM, label: 'System' },
+];
 
 export default function SettingsScreen({ isGuest, onCreateAccount, onLogout, onSignIn }) {
   const navigation = useNavigation();
   const { hasGoogleProvider, hasPasswordProvider, linkGoogleAccount, user, userProfile, logout, updateDisplayName } = useAuth();
   const { isPremium } = usePremium();
   const { credits, watchAdAndEarn } = useCredits();
+  const theme = useTheme();
+  const { mode, setMode } = theme;
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [isEditing, setIsEditing] = useState(false);
   const [displayName, setDisplayName] = useState(userProfile?.displayName || user?.displayName || '');
   const [error, setError] = useState('');
@@ -109,7 +120,7 @@ export default function SettingsScreen({ isGuest, onCreateAccount, onLogout, onS
           {profile.profileLoadError ? <Text style={styles.error}>Profile could not be loaded. Showing account fallback.</Text> : null}
           {isEditing ? (
             <View style={styles.editBox}>
-              <TextInput maxLength={50} onChangeText={setDisplayName} placeholder="Display Name" placeholderTextColor={colors.textSecondary} style={styles.input} value={displayName} />
+              <TextInput maxLength={50} onChangeText={setDisplayName} placeholder="Display Name" placeholderTextColor={theme.colors.textTertiary} style={styles.input} value={displayName} />
               <PrimaryButton title={loading ? 'Saving...' : 'Save Display Name'} onPress={submitDisplayName} disabled={loading} />
               <SecondaryButton title="Cancel" onPress={() => setIsEditing(false)} disabled={loading} />
             </View>
@@ -161,6 +172,25 @@ export default function SettingsScreen({ isGuest, onCreateAccount, onLogout, onS
           <SecondaryButton title="Return to Welcome" onPress={onLogout} style={styles.button} />
         </View>
       )}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Appearance</Text>
+        <View style={styles.segment}>
+          {APPEARANCE_OPTIONS.map((option) => {
+            const active = mode === option.mode;
+            return (
+              <Pressable
+                key={option.mode}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => setMode(option.mode)}
+                style={[styles.segmentItem, active && styles.segmentItemActive]}
+              >
+                <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{option.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
       <Text style={styles.notice}>WakeProof currently uses local notifications for alarm delivery. Device battery optimization or force-stopping the app may affect alarm timing.</Text>
       {/* MOCK: inline mock reward-ad overlay managed by SettingsScreen. */}
       <MockAdOverlay
@@ -174,20 +204,26 @@ export default function SettingsScreen({ isGuest, onCreateAccount, onLogout, onS
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, spacing, typography, radius }) => StyleSheet.create({
   heading: { ...typography.heading, color: colors.textPrimary },
-  card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, marginTop: spacing.lg, padding: spacing.md },
-  avatar: { borderRadius: 32, height: 64, marginBottom: spacing.md, width: 64 },
+  card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, borderWidth: 1, marginTop: spacing.lg, padding: spacing.md },
+  avatar: { borderRadius: radius.pill, height: 64, marginBottom: spacing.md, width: 64 },
   name: { ...typography.heading, color: colors.textPrimary },
   section: { borderTopColor: colors.border, borderTopWidth: 1, marginTop: spacing.lg, paddingTop: spacing.md },
   sectionTitle: { ...typography.label, color: colors.textPrimary, marginBottom: spacing.sm },
   value: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm },
   editBox: { gap: spacing.md, marginTop: spacing.md },
-  input: { ...typography.body, backgroundColor: colors.background, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.textPrimary, padding: spacing.md },
+  input: { ...typography.body, backgroundColor: colors.surfaceAlt, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, color: colors.textPrimary, padding: spacing.md },
   error: { ...typography.body, color: colors.danger, marginTop: spacing.md },
   notice: { ...typography.body, color: colors.textSecondary, marginTop: spacing.lg },
   button: { marginTop: spacing.md },
-  premiumBadge: { alignSelf: 'flex-start', backgroundColor: colors.premium, borderRadius: 999, marginTop: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  premiumBadge: { alignSelf: 'flex-start', backgroundColor: colors.premium, borderRadius: radius.pill, marginTop: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   premiumBadgePressed: { opacity: 0.85 },
-  premiumBadgeText: { ...typography.label, color: colors.white },
+  premiumBadgeText: { ...typography.label, color: '#1A1200' },
+  // Segmented control for Light / Dark / System.
+  segment: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, flexDirection: 'row', marginTop: spacing.xs, padding: spacing.xs },
+  segmentItem: { alignItems: 'center', borderRadius: radius.sm, flex: 1, minHeight: 40, justifyContent: 'center', paddingVertical: spacing.sm },
+  segmentItemActive: { backgroundColor: colors.primary },
+  segmentText: { ...typography.label, color: colors.textSecondary },
+  segmentTextActive: { color: colors.onPrimary },
 });

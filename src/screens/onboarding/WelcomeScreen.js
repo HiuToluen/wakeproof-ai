@@ -1,11 +1,15 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import PrimaryButton from '../../components/common/PrimaryButton';
 import ScreenContainer from '../../components/common/ScreenContainer';
 import SecondaryButton from '../../components/common/SecondaryButton';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 
 export default function WelcomeScreen({ navigation, onContinueAsGuest }) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <ScreenContainer>
       <View style={styles.content}>
@@ -26,7 +30,7 @@ export default function WelcomeScreen({ navigation, onContinueAsGuest }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, spacing, typography }) => StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',

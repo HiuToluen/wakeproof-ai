@@ -9,14 +9,15 @@ import ChallengeInstructionScreen from '../screens/challenge/ChallengeInstructio
 import ChallengePreviewScreen from '../screens/challenge/ChallengePreviewScreen';
 import ChallengeVerificationScreen from '../screens/challenge/ChallengeVerificationScreen';
 import PremiumScreen from '../screens/premium/PremiumScreen';
-import { colors } from '../theme';
+import { useTheme } from '../hooks/useTheme';
 import MainTabNavigator from './MainTabNavigator';
 
 const Stack = createNativeStackNavigator();
 
 export default function MainStackNavigator({ isGuest, onAuthRequested, onLogout }) {
+  const { colors } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ contentStyle: { backgroundColor: colors.background } }}>
+    <Stack.Navigator screenOptions={{ contentStyle: { backgroundColor: colors.background }, headerStyle: { backgroundColor: colors.surface }, headerTintColor: colors.textPrimary, headerShadowVisible: false }}>
       <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
         {() => <MainTabNavigator isGuest={isGuest} onAuthRequested={onAuthRequested} onLogout={onLogout} />}
       </Stack.Screen>

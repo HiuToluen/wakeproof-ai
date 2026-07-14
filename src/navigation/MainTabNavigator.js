@@ -1,39 +1,40 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import AlarmListScreen from '../screens/alarm/AlarmListScreen';
 import ProgressScreen from '../screens/progress/ProgressScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import SleepScreen from '../screens/sleep/SleepScreen';
-import { colors } from '../theme';
+import { useTheme } from '../hooks/useTheme';
 
 const Tab = createBottomTabNavigator();
 
+// Vector icon per tab (filled when focused, outline otherwise).
 const TAB_ICONS = {
-  Alarms: 'A',
-  Sleep: 'S',
-  Progress: 'P',
-  Settings: 'G',
+  Alarms: { active: 'alarm', inactive: 'alarm-outline' },
+  Sleep: { active: 'moon', inactive: 'moon-outline' },
+  Progress: { active: 'stats-chart', inactive: 'stats-chart-outline' },
+  Settings: { active: 'settings', inactive: 'settings-outline' },
 };
 
-function TabIcon({ color, focused, routeName }) {
-  return (
-    <View style={[styles.icon, { borderColor: color }, focused && styles.focusedIcon]}>
-      <Text style={[styles.iconText, { color }]}>{TAB_ICONS[routeName]}</Text>
-    </View>
-  );
-}
-
 export default function MainTabNavigator({ isGuest, onAuthRequested, onLogout }) {
+  const { colors } = useTheme();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
-        tabBarIcon: ({ color, focused }) => (
-          <TabIcon color={color} focused={focused} routeName={route.name} />
-        ),
-        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+        },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+        tabBarIcon: ({ color, focused, size }) => {
+          const icon = TAB_ICONS[route.name];
+          return <Ionicons color={color} name={focused ? icon.active : icon.inactive} size={size ?? 24} />;
+        },
       })}
     >
       <Tab.Screen name="Alarms" component={AlarmListScreen} />
@@ -45,22 +46,3 @@ export default function MainTabNavigator({ isGuest, onAuthRequested, onLogout })
     </Tab.Navigator>
   );
 }
-
-const styles = StyleSheet.create({
-  icon: {
-    alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    height: 24,
-    justifyContent: 'center',
-    width: 24,
-  },
-  focusedIcon: {
-    backgroundColor: colors.background,
-    borderWidth: 2,
-  },
-  iconText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-});

@@ -13,7 +13,7 @@
 //
 // MOCK: upgrade / revert are simulated client-side (class project). See
 // `src/services/mockPremiumService.js` and `src/hooks/usePremium.js`.
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import PrimaryButton from '../../components/common/PrimaryButton';
@@ -21,7 +21,7 @@ import ScreenContainer from '../../components/common/ScreenContainer';
 import SecondaryButton from '../../components/common/SecondaryButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePremium } from '../../hooks/usePremium';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 import { mapFirebaseError } from '../../utils/firebaseErrorMapper';
 
 // Static feature list shown to every viewer (guest, free, premium).
@@ -54,7 +54,7 @@ const FEATURES = [
  * - Available feature (premium): premium-colored checkmark.
  * - Coming soon (any plan): muted outlined star placeholder.
  */
-function FeatureIndicator({ comingSoon, isPremium }) {
+function FeatureIndicator({ comingSoon, isPremium, styles }) {
   if (comingSoon) {
     return (
       <View style={styles.indicatorComingSoon}>
@@ -84,6 +84,8 @@ function FeatureIndicator({ comingSoon, isPremium }) {
 export default function PremiumScreen({ onSignIn }) {
   const { user } = useAuth();
   const { isPremium, upgrade, revert } = usePremium();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -146,7 +148,7 @@ export default function PremiumScreen({ onSignIn }) {
       <View style={styles.card}>
         {FEATURES.map((feature) => (
           <View key={feature.id} style={styles.featureItem}>
-            <FeatureIndicator comingSoon={feature.comingSoon} isPremium={isPremium} />
+            <FeatureIndicator comingSoon={feature.comingSoon} isPremium={isPremium} styles={styles} />
             <View style={styles.featureContent}>
               <Text style={styles.featureTitle}>{feature.title}</Text>
               <Text style={styles.featureDescription}>{feature.description}</Text>
@@ -193,7 +195,7 @@ export default function PremiumScreen({ onSignIn }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, spacing, typography, radius }) => StyleSheet.create({
   heading: {
     ...typography.heading,
     color: colors.textPrimary,
@@ -206,14 +208,14 @@ const styles = StyleSheet.create({
   badge: {
     alignSelf: 'flex-start',
     backgroundColor: colors.premium,
-    borderRadius: 999,
+    borderRadius: radius.pill,
     marginTop: spacing.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
   badgeText: {
     ...typography.label,
-    color: colors.white,
+    color: '#1A1200', // dark text on amber premium badge for contrast (both themes)
   },
   error: {
     ...typography.body,
@@ -223,7 +225,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     borderWidth: 1,
     marginTop: spacing.lg,
     padding: spacing.md,
@@ -250,7 +252,7 @@ const styles = StyleSheet.create({
   },
   indicator: {
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: radius.md,
     height: 24,
     justifyContent: 'center',
     width: 24,
@@ -266,15 +268,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   indicatorTextFree: {
-    color: colors.white,
+    color: colors.onPrimary,
   },
   indicatorTextPremium: {
-    color: colors.white,
+    color: '#1A1200', // dark check on amber premium indicator
   },
   indicatorComingSoon: {
     alignItems: 'center',
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 1,
     height: 24,
     justifyContent: 'center',

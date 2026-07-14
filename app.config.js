@@ -1,3 +1,13 @@
+const fs = require('fs');
+const path = require('path');
+
+// google-services.json holds Firebase Android credentials and is gitignored, so
+// it is not present on every machine. Only wire it into the Android config when
+// the file actually exists — this lets contributors without it still prebuild
+// and run the app (Google native sign-in is the only feature that needs it).
+const googleServicesPath = process.env.GOOGLE_SERVICES_JSON || './google-services.json';
+const hasGoogleServices = fs.existsSync(path.resolve(__dirname, googleServicesPath));
+
 module.exports = {
   expo: {
     name: 'WakeProof AI',
@@ -20,12 +30,14 @@ module.exports = {
         'android.permission.CAMERA',
         'android.permission.MODIFY_AUDIO_SETTINGS',
       ],
-      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || './google-services.json',
+      // Only set when the credentials file exists (see hasGoogleServices above).
+      ...(hasGoogleServices ? { googleServicesFile: googleServicesPath } : {}),
     },
     web: {
       output: 'single',
     },
     plugins: [
+      'expo-font',
       'expo-sqlite',
       [
         'expo-camera',
@@ -53,7 +65,9 @@ module.exports = {
         },
       ],
       'expo-asset',
-      '@react-native-google-signin/google-signin',
+      // Google native sign-in needs the Firebase credentials file; skip its
+      // config plugin when the file is absent so prebuild still succeeds.
+      ...(hasGoogleServices ? ['@react-native-google-signin/google-signin'] : []),
     ],
     extra: {
       eas: {
