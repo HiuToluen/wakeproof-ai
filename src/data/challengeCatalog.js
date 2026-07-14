@@ -1,12 +1,12 @@
 import { CHALLENGE_TYPES } from '../constants/challengeConstants';
 
 export const DEMO_OBJECT_CHALLENGES = [
-  { id: 'demo_object_table', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'table', label: 'Bàn', title: 'Tìm một cái bàn', instruction: 'Chụp ảnh rõ ràng của một cái bàn.', difficulty: 1, isActive: true },
-  { id: 'demo_object_chair', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'chair', label: 'Ghế', title: 'Tìm một cái ghế', instruction: 'Chụp ảnh rõ ràng của một cái ghế.', difficulty: 1, isActive: true },
-  { id: 'demo_object_laptop', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'laptop', label: 'Laptop', title: 'Tìm một chiếc laptop', instruction: 'Chụp ảnh rõ ràng của một chiếc laptop.', difficulty: 1, isActive: true },
-  { id: 'demo_object_computer_mouse', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'computer_mouse', label: 'Chuột máy tính', title: 'Tìm một con chuột máy tính', instruction: 'Chụp ảnh rõ ràng của một con chuột máy tính.', difficulty: 1, isActive: true },
-  { id: 'demo_object_smartphone', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'smartphone', label: 'Điện thoại', title: 'Tìm một chiếc điện thoại', instruction: 'Chụp ảnh rõ ràng của một chiếc điện thoại.', difficulty: 1, isActive: true },
-  { id: 'demo_object_water_bottle', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'water_bottle', label: 'Chai nước', title: 'Tìm một chai nước', instruction: 'Chụp ảnh rõ ràng của một chai nước.', difficulty: 1, isActive: true },
+  { id: 'demo_object_table', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'table', label: 'Table', title: 'Find a table', instruction: 'Take a clear photo of a table.', difficulty: 1, isActive: true },
+  { id: 'demo_object_chair', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'chair', label: 'Chair', title: 'Find a chair', instruction: 'Take a clear photo of a chair.', difficulty: 1, isActive: true },
+  { id: 'demo_object_laptop', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'laptop', label: 'Laptop', title: 'Find a laptop', instruction: 'Take a clear photo of a laptop.', difficulty: 1, isActive: true },
+  { id: 'demo_object_computer_mouse', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'computer_mouse', label: 'Computer mouse', title: 'Find a computer mouse', instruction: 'Take a clear photo of a computer mouse.', difficulty: 1, isActive: true },
+  { id: 'demo_object_smartphone', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'smartphone', label: 'Smartphone', title: 'Find a smartphone', instruction: 'Take a clear photo of a smartphone.', difficulty: 1, isActive: true },
+  { id: 'demo_object_water_bottle', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'water_bottle', label: 'Water bottle', title: 'Find a water bottle', instruction: 'Take a clear photo of a water bottle.', difficulty: 1, isActive: true },
 ];
 
 export function getRandomDemoObjectChallenge(previousChallengeId) {
