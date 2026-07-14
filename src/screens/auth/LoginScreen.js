@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import PrimaryButton from '../../components/common/PrimaryButton';
 import ScreenContainer from '../../components/common/ScreenContainer';
 import SecondaryButton from '../../components/common/SecondaryButton';
 import { useAuth } from '../../contexts/AuthContext';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 import { mapFirebaseError, isGoogleCancelError } from '../../utils/firebaseErrorMapper';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -16,6 +16,9 @@ export default function LoginScreen({ navigation, onContinueAsGuest }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loadingAction, setLoadingAction] = useState('');
+
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const validate = () => {
     if (!email.trim()) return 'Enter your email address.';
@@ -57,8 +60,25 @@ export default function LoginScreen({ navigation, onContinueAsGuest }) {
       <View style={styles.content}>
         <Text style={styles.heading}>Sign In</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        <TextInput autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={setEmail} placeholder="Email" placeholderTextColor={colors.textSecondary} style={styles.input} value={email} />
-        <TextInput autoCapitalize="none" onChangeText={setPassword} placeholder="Password" placeholderTextColor={colors.textSecondary} secureTextEntry style={styles.input} value={password} />
+        <TextInput
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          onChangeText={setEmail}
+          placeholder="Email"
+          placeholderTextColor={theme.colors.textSecondary}
+          style={styles.input}
+          value={email}
+        />
+        <TextInput
+          autoCapitalize="none"
+          onChangeText={setPassword}
+          placeholder="Password"
+          placeholderTextColor={theme.colors.textSecondary}
+          secureTextEntry
+          style={styles.input}
+          value={password}
+        />
         <View style={styles.actions}>
           <PrimaryButton title={loadingAction === 'email' ? 'Signing In...' : 'Sign In'} onPress={submitEmail} disabled={Boolean(loadingAction)} />
           <SecondaryButton title={loadingAction === 'google' ? 'Connecting...' : 'Continue with Google'} onPress={submitGoogle} disabled={Boolean(loadingAction)} />
@@ -75,11 +95,20 @@ export default function LoginScreen({ navigation, onContinueAsGuest }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, spacing, typography, radius }) => StyleSheet.create({
   content: { flex: 1, justifyContent: 'center' },
   heading: { ...typography.heading, color: colors.textPrimary, marginBottom: spacing.lg },
   error: { ...typography.body, color: colors.danger, marginBottom: spacing.md },
-  input: { ...typography.body, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.textPrimary, marginBottom: spacing.md, padding: spacing.md },
+  input: {
+    ...typography.body,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
   actions: { gap: spacing.md, marginTop: spacing.sm },
   textAction: { alignItems: 'center', padding: spacing.sm },
   textActionLabel: { ...typography.label, color: colors.primary },

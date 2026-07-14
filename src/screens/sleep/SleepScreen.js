@@ -21,6 +21,7 @@ import TimeInput from '../../components/alarm/TimeInput';
 import PrimaryButton from '../../components/common/PrimaryButton';
 import ScreenContainer from '../../components/common/ScreenContainer';
 import { usePremium } from '../../hooks/usePremium';
+import { useTheme } from '../../hooks/useTheme';
 import {
   calculateBedtimes,
   calculateWakeTimes,
@@ -29,7 +30,6 @@ import {
   formatTime,
   SLEEP_CYCLE_MINUTES,
 } from '../../utils/sleepCycle';
-import { colors, spacing, typography } from '../../theme';
 
 // Mode toggle values.
 const MODE_WAKE_AT = 'wake_at'; // "I want to wake at..."
@@ -39,37 +39,33 @@ const MODE_SLEEP_AT = 'sleep_at'; // "I want to sleep at..."
 const DEFAULT_HOUR = '07';
 const DEFAULT_MINUTE = '00';
 
-// Quality badge background colors keyed by quality label.
-const QUALITY_COLORS = {
+// Quality badge background colors keyed by quality label. Built from the active
+// palette so badges stay legible/distinct in both light and dark themes.
+const getQualityColors = (colors) => ({
   Ideal: colors.success,
   Good: colors.info,
   Short: colors.warning,
   Minimal: colors.danger,
-};
+});
 
 // A small palette used to visually differentiate cycle segments in the timeline.
 // Cycles through four hues so adjacent blocks are always distinguishable.
-const TIMELINE_COLORS = [
+const getTimelineColors = (colors) => [
   colors.primary,
   colors.info,
   colors.success,
   colors.premium,
 ];
 
-// Phase labels that cycle through the sleep stages within each 90-min block.
-const PHASE_LABELS = ['Light', 'Deep', 'REM'];
-
 /**
  * Lock card shown to free users and guests. Features a premium amber accent,
  * a lock icon, explanatory text, and an "Upgrade to Premium" CTA.
  */
-function LockedSleepView() {
+function LockedSleepView({ styles }) {
   const navigation = useNavigation();
 
   // Both free and guest users navigate to the PremiumScreen. For guests the
-  // PremiumScreen shows a "Sign in to subscribe" prompt that leads to auth,
-  // satisfying VAL-SLEEP-002 (free -> Premium) and VAL-SLEEP-004 (guest ->
-  // auth / Premium).
+  // PremiumScreen shows a "Sign in to subscribe" prompt that leads to auth.
   const handleUpgrade = () => {
     navigation.navigate('Premium');
   };
@@ -105,8 +101,8 @@ function LockedSleepView() {
  * duration, a color-coded quality badge, and a "Create Alarm" button. Tapping
  * the card body selects it (updating the timeline).
  */
-function SuggestionCard({ suggestion, selected, onSelect, onCreateAlarm }) {
-  const qualityColor = QUALITY_COLORS[suggestion.quality] || colors.textSecondary;
+function SuggestionCard({ suggestion, selected, onSelect, onCreateAlarm, styles, colors }) {
+  const qualityColor = getQualityColors(colors)[suggestion.quality] || colors.textSecondary;
 
   return (
     <Pressable
@@ -148,8 +144,9 @@ function SuggestionCard({ suggestion, selected, onSelect, onCreateAlarm }) {
  * colored block per 90-minute sleep cycle, and a wake marker. The number of
  * cycle segments matches the selected suggestion's cycle count.
  */
-function SleepTimeline({ suggestion }) {
+function SleepTimeline({ suggestion, styles, colors }) {
   const { cycles } = suggestion;
+  const timelineColors = getTimelineColors(colors);
 
   return (
     <View style={styles.timelineContainer}>
@@ -158,12 +155,7 @@ function SleepTimeline({ suggestion }) {
       </Text>
       <View style={styles.timelineBar}>
         {/* Fall-asleep buffer segment */}
-        <View
-          style={[
-            styles.timelineSegment,
-            styles.fallAsleepSegment,
-          ]}
-        >
+        <View style={[styles.timelineSegment, styles.fallAsleepSegment]}>
           <Text style={styles.segmentEmoji}>😴</Text>
         </View>
         {/* One colored block per sleep cycle */}
@@ -173,19 +165,14 @@ function SleepTimeline({ suggestion }) {
             style={[
               styles.timelineSegment,
               styles.cycleSegment,
-              { backgroundColor: TIMELINE_COLORS[index % TIMELINE_COLORS.length] },
+              { backgroundColor: timelineColors[index % timelineColors.length] },
             ]}
           >
             <Text style={styles.cycleSegmentText}>{index + 1}</Text>
           </View>
         ))}
         {/* Wake marker */}
-        <View
-          style={[
-            styles.timelineSegment,
-            styles.wakeSegment,
-          ]}
-        >
+        <View style={[styles.timelineSegment, styles.wakeSegment]}>
           <Text style={styles.segmentEmoji}>🔔</Text>
         </View>
       </View>
@@ -213,7 +200,7 @@ function SleepTimeline({ suggestion }) {
 /**
  * The full sleep cycle optimizer for premium users.
  */
-function SleepOptimizer() {
+function SleepOptimizer({ styles, colors }) {
   const navigation = useNavigation();
   const [mode, setMode] = useState(MODE_WAKE_AT);
   const [hour, setHour] = useState(DEFAULT_HOUR);
@@ -267,34 +254,18 @@ function SleepOptimizer() {
         <Pressable
           accessibilityRole="button"
           onPress={() => handleModeChange(MODE_WAKE_AT)}
-          style={[
-            styles.modeOption,
-            mode === MODE_WAKE_AT && styles.modeOptionActive,
-          ]}
+          style={[styles.modeOption, mode === MODE_WAKE_AT && styles.modeOptionActive]}
         >
-          <Text
-            style={[
-              styles.modeText,
-              mode === MODE_WAKE_AT && styles.modeTextActive,
-            ]}
-          >
+          <Text style={[styles.modeText, mode === MODE_WAKE_AT && styles.modeTextActive]}>
             I want to wake at...
           </Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
           onPress={() => handleModeChange(MODE_SLEEP_AT)}
-          style={[
-            styles.modeOption,
-            mode === MODE_SLEEP_AT && styles.modeOptionActive,
-          ]}
+          style={[styles.modeOption, mode === MODE_SLEEP_AT && styles.modeOptionActive]}
         >
-          <Text
-            style={[
-              styles.modeText,
-              mode === MODE_SLEEP_AT && styles.modeTextActive,
-            ]}
-          >
+          <Text style={[styles.modeText, mode === MODE_SLEEP_AT && styles.modeTextActive]}>
             I want to sleep at...
           </Text>
         </Pressable>
@@ -325,13 +296,15 @@ function SleepOptimizer() {
             selected={index === safeIndex}
             onSelect={() => handleSelectCard(index)}
             onCreateAlarm={() => handleCreateAlarm(suggestion)}
+            styles={styles}
+            colors={colors}
           />
         ))}
       </View>
 
       {/* Timeline visualization for the selected suggestion */}
       {selectedSuggestion ? (
-        <SleepTimeline suggestion={selectedSuggestion} />
+        <SleepTimeline suggestion={selectedSuggestion} styles={styles} colors={colors} />
       ) : null}
     </ScreenContainer>
   );
@@ -343,15 +316,17 @@ function SleepOptimizer() {
  */
 export default function SleepScreen() {
   const { isPremium } = usePremium();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   if (!isPremium) {
-    return <LockedSleepView />;
+    return <LockedSleepView styles={styles} />;
   }
 
-  return <SleepOptimizer />;
+  return <SleepOptimizer styles={styles} colors={theme.colors} />;
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors, spacing, typography, radius }) => StyleSheet.create({
   heading: {
     ...typography.heading,
     color: colors.textPrimary,
@@ -365,7 +340,7 @@ const styles = StyleSheet.create({
   lockCard: {
     backgroundColor: colors.surface,
     borderColor: colors.premium,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     borderWidth: 1,
     marginTop: spacing.lg,
     overflow: 'hidden',
@@ -413,9 +388,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 1,
     flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
     paddingVertical: spacing.md,
   },
   modeOptionActive: {
@@ -429,7 +406,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   modeTextActive: {
-    color: colors.white,
+    color: colors.onPrimary,
   },
   // --- Time picker ---
   timePickerContainer: {
@@ -454,7 +431,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     borderWidth: 1,
     padding: spacing.md,
   },
@@ -475,12 +452,12 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   qualityBadge: {
-    borderRadius: 999,
+    borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
   qualityBadgeText: {
-    color: colors.white,
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -500,7 +477,7 @@ const styles = StyleSheet.create({
   timelineContainer: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     borderWidth: 1,
     marginTop: spacing.xl,
     padding: spacing.md,
@@ -514,7 +491,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     height: 40,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     overflow: 'hidden',
   },
   timelineSegment: {
@@ -535,7 +512,7 @@ const styles = StyleSheet.create({
     width: 24,
   },
   cycleSegmentText: {
-    color: colors.white,
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, Vibration, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -15,7 +15,7 @@ import { usePremium } from '../../hooks/usePremium';
 import { restartAlarmPlayback, stopAlarmPlayback } from '../../services/alarmAudioService';
 import { assignChallengeToSession } from '../../services/challengeService';
 import { cancelPendingSnoozeForSession, scheduleSnoozeNotification } from '../../services/alarmSchedulerService';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 import { formatTime, getRepeatDaysSummary } from '../../utils/dateTime';
 
 const VIBRATION_PATTERN = [0, 700, 300, 700, 300, 1200];
@@ -26,6 +26,8 @@ function startAlarmVibration() {
 }
 
 export default function AlarmRingingScreen({ navigation, route }) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { alarmId, sessionId } = route.params;
   const [alarm, setAlarm] = useState(null);
   const [session, setSession] = useState(null);
@@ -236,7 +238,7 @@ export default function AlarmRingingScreen({ navigation, route }) {
         <Text style={styles.title}>{alarm.title}</Text>
         <Text style={styles.message}>{getRepeatDaysSummary(alarm.repeatDays)}</Text>
         {session.status === ALARM_SESSION_STATUS.SNOOZING ? <Text style={styles.waiting}>Snoozing: {Math.floor(snoozeSeconds / 60)}:{String(snoozeSeconds % 60).padStart(2, '0')}</Text> : null}
-        {lockSeconds > 0 ? <><Text style={styles.waiting}>Challenge locked</Text><Text style={styles.waiting}>Available again in {Math.floor(lockSeconds / 60)}:{String(lockSeconds % 60).padStart(2, '0')}</Text></> : null}
+        {lockSeconds > 0 ? <><Text style={styles.locked}>Challenge locked</Text><Text style={styles.locked}>Available again in {Math.floor(lockSeconds / 60)}:{String(lockSeconds % 60).padStart(2, '0')}</Text></> : null}
         <Text style={styles.message}>Snoozes: {session.snoozeCount} of {alarm.maxSnooze}</Text>
         {queuedCount > 0 ? <Text style={styles.waiting}>{queuedCount} alarm{queuedCount === 1 ? '' : 's'} waiting</Text> : null}
         <PrimaryButton title={lockSeconds > 0 ? 'Challenge temporarily locked' : 'Start Wake Challenge'} onPress={startChallenge} disabled={processing || lockSeconds > 0} style={styles.challenge} />
@@ -255,4 +257,16 @@ export default function AlarmRingingScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({ center: { alignItems: 'center', flex: 1, justifyContent: 'center' }, clock: { color: colors.primary, fontSize: 64, fontWeight: '700' }, title: { ...typography.heading, color: colors.textPrimary, marginTop: spacing.lg }, message: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm }, waiting: { ...typography.label, color: colors.danger, marginTop: spacing.md }, challenge: { marginTop: spacing.xxl, width: '100%' }, snooze: { marginTop: spacing.md, width: '100%' } });
+const createStyles = ({ colors, spacing, typography }) => StyleSheet.create({
+  center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
+  // Big clock kept in primary — high-contrast branded accent, readable in both modes
+  clock: { color: colors.primary, fontSize: 64, fontWeight: '700' },
+  title: { ...typography.heading, color: colors.textPrimary, marginTop: spacing.lg },
+  message: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm },
+  // "N alarms waiting" and snooze countdown — informational, use warning
+  waiting: { ...typography.label, color: colors.warning, marginTop: spacing.md },
+  // "Challenge locked" — blocking action state, use danger
+  locked: { ...typography.label, color: colors.danger, marginTop: spacing.md },
+  challenge: { marginTop: spacing.xxl, width: '100%' },
+  snooze: { marginTop: spacing.md, width: '100%' },
+});

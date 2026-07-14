@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -8,9 +8,12 @@ import ScreenContainer from '../../components/common/ScreenContainer';
 import { deleteAlarm, duplicateAlarm, getAllAlarms, setAlarmEnabled } from '../../database/alarmRepository';
 import { cancelAlarmSchedule, scheduleAlarm } from '../../services/alarmSchedulerService';
 import { assertNoActiveAlarmSession } from '../../services/alarmMutationGuard';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 
 export default function AlarmListScreen({ navigation }) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { colors } = theme;
   const [alarms, setAlarms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -27,4 +30,4 @@ export default function AlarmListScreen({ navigation }) {
   return <ScreenContainer><View style={styles.header}><Text style={styles.heading}>Your Alarms</Text><PrimaryButton title="Add Alarm" onPress={() => navigation.navigate('AlarmForm')} style={styles.addButton} /></View>{loading ? <View style={styles.center}><ActivityIndicator color={colors.primary} /><Text style={styles.message}>Loading alarms...</Text></View> : null}{!loading && error ? <View style={styles.center}><Text style={styles.error}>{error}</Text><PrimaryButton title="Retry" onPress={loadAlarms} style={styles.retry} /></View> : null}{!loading && !error && alarms.length === 0 ? <View style={styles.center}><Text style={styles.emptyTitle}>No alarms yet</Text><Text style={styles.message}>Create your first alarm to start building a stronger wake-up routine.</Text></View> : null}{!loading && !error && alarms.length > 0 ? <FlatList contentContainerStyle={styles.list} data={alarms} keyExtractor={(item) => item.id} renderItem={({ item }) => <AlarmCard alarm={item} menuVisible={openMenuId === item.id} onAdd={() => runMenuAction(() => navigation.navigate('AlarmForm'))} onDelete={() => confirmDelete(item)} onDuplicate={() => duplicate(item)} onEdit={() => navigation.navigate('AlarmForm', { alarmId: item.id })} onMenuClose={() => setOpenMenuId(null)} onMenuOpen={() => setOpenMenuId(item.id)} onPreview={() => runMenuAction(() => navigation.navigate('AlarmPreview', { alarmId: item.id }))} onToggle={(value) => toggleAlarm(item, value)} />} /> : null}</ScreenContainer>;
 }
 
-const styles = StyleSheet.create({ header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, heading: { ...typography.heading, color: colors.textPrimary }, addButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm }, center: { alignItems: 'center', flex: 1, justifyContent: 'center' }, emptyTitle: { ...typography.heading, color: colors.textPrimary }, message: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm, textAlign: 'center' }, error: { ...typography.body, color: colors.danger, textAlign: 'center' }, retry: { marginTop: spacing.lg }, list: { gap: spacing.md, paddingBottom: spacing.lg, paddingTop: spacing.lg } });
+const createStyles = ({ colors, spacing, typography }) => StyleSheet.create({ header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, heading: { ...typography.heading, color: colors.textPrimary }, addButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm }, center: { alignItems: 'center', flex: 1, justifyContent: 'center' }, emptyTitle: { ...typography.heading, color: colors.textPrimary }, message: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm, textAlign: 'center' }, error: { ...typography.body, color: colors.danger, textAlign: 'center' }, retry: { marginTop: spacing.lg }, list: { gap: spacing.md, paddingBottom: spacing.lg, paddingTop: spacing.lg } });

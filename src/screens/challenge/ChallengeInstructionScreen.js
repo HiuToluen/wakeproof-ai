@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, BackHandler, StyleSheet, Text, View } from 'react-native';
 
 import PrimaryButton from '../../components/common/PrimaryButton';
@@ -8,7 +8,7 @@ import { CHALLENGE_MODES } from '../../constants/alarmConstants';
 import { MAX_CHALLENGE_REROLLS } from '../../constants/challengeConstants';
 import { assignChallengeToSession, getActiveChallenges, rerollChallengeForSession } from '../../services/challengeService';
 import { returnChallengeToRinging, stopChallengeAlerts } from '../../services/challengeFlowService';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../hooks/useTheme';
 
 function formatRemaining(deadlineAt) {
   const seconds = Math.max(0, Math.ceil((new Date(deadlineAt).getTime() - Date.now()) / 1000));
@@ -33,6 +33,9 @@ export default function ChallengeInstructionScreen({ navigation, route }) {
   const [previewChallengeHistory, setPreviewChallengeHistory] = useState(route.params.previewChallengeHistory ?? []);
   const transitionStarted = useRef(false);
   const rerollRequestId = useRef(0);
+
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const returnToRinging = useCallback(async () => {
     if (transitionStarted.current) return;
@@ -97,4 +100,16 @@ export default function ChallengeInstructionScreen({ navigation, route }) {
   return <ScreenContainer><View style={styles.content}><Text style={styles.type}>{challenge.type.replace('_', ' ')}</Text><Text style={styles.title}>{challenge.title}</Text><Text style={styles.countdown}>Time remaining: {remaining || formatRemaining(challenge.deadlineAt)}</Text><Text style={styles.instruction}>{challenge.instruction}</Text><Text style={styles.message}>Target: {challenge.targetKey.replaceAll('_', ' ')}</Text><Text style={styles.message}>{rerollText}</Text>{rerollMessage ? <Text style={styles.warning}>{rerollMessage}</Text> : null}<Text style={styles.privacy}>Challenge photos are used only for wake verification.</Text><PrimaryButton title="Start Camera" onPress={() => navigation.navigate(preview ? 'PreviewCameraChallenge' : 'CameraChallenge', { alarmId, sessionId, preview, challenge, challengeMode: route.params.challengeMode, previewRerollCount, previewChallengeHistory })} style={styles.button} /><SecondaryButton title={rerolling ? 'Choosing...' : 'Random Another Challenge'} onPress={rerollChallenge} disabled={rerolling || remainingRerolls <= 0} style={styles.back} /><SecondaryButton title="Back to Alarm" onPress={returnToRinging} style={styles.back} /></View></ScreenContainer>;
 }
 
-const styles = StyleSheet.create({ center: { alignItems: 'center', flex: 1, justifyContent: 'center' }, content: { flex: 1, justifyContent: 'center' }, type: { ...typography.label, color: colors.primary, textAlign: 'center' }, title: { ...typography.heading, color: colors.textPrimary, marginTop: spacing.md, textAlign: 'center' }, countdown: { ...typography.heading, color: colors.danger, marginTop: spacing.lg, textAlign: 'center' }, instruction: { ...typography.body, color: colors.textPrimary, marginTop: spacing.xl, textAlign: 'center' }, message: { ...typography.body, color: colors.textSecondary, marginTop: spacing.md, textAlign: 'center' }, privacy: { ...typography.body, color: colors.textSecondary, marginTop: spacing.lg, textAlign: 'center' }, warning: { ...typography.body, color: colors.danger, marginTop: spacing.sm, textAlign: 'center' }, button: { marginTop: spacing.xl }, back: { marginTop: spacing.md } });
+const createStyles = ({ colors, spacing, typography, radius }) => StyleSheet.create({
+  center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
+  content: { flex: 1, justifyContent: 'center' },
+  type: { ...typography.label, color: colors.primary, textAlign: 'center' },
+  title: { ...typography.heading, color: colors.textPrimary, marginTop: spacing.md, textAlign: 'center' },
+  countdown: { ...typography.heading, color: colors.danger, marginTop: spacing.lg, textAlign: 'center' },
+  instruction: { ...typography.body, color: colors.textPrimary, marginTop: spacing.xl, textAlign: 'center' },
+  message: { ...typography.body, color: colors.textSecondary, marginTop: spacing.md, textAlign: 'center' },
+  privacy: { ...typography.body, color: colors.textSecondary, marginTop: spacing.lg, textAlign: 'center' },
+  warning: { ...typography.body, color: colors.danger, marginTop: spacing.sm, textAlign: 'center' },
+  button: { marginTop: spacing.xl },
+  back: { marginTop: spacing.md },
+});
