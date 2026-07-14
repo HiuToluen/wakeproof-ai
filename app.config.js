@@ -37,6 +37,7 @@ module.exports = {
       output: 'single',
     },
     plugins: [
+      'expo-font',
       'expo-sqlite',
       [
         'expo-camera',
