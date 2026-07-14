@@ -7,6 +7,12 @@ module.exports = {
     scheme: 'wakeproofai',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
+    updates: {
+      url: 'https://u.expo.dev/30dee5b3-8ca2-4be3-af4c-6f9301b1b4cd',
+    },
+    runtimeVersion: {
+      policy: 'appVersion',
+    },
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.se1928.group5.wakeproofai',

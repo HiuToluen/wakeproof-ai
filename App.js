@@ -12,6 +12,7 @@ import RootNavigator, { APP_MODES } from './src/navigation/RootNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
 import { reconcileAlarmSchedules } from './src/services/alarmSchedulerService';
 import { processAlarmNotificationResponse, restoreAlarmQueue } from './src/services/alarmSessionService';
+import { subscribeActiveSessionRefresh } from './src/services/activeSessionRefreshService';
 import { addNotificationReceivedListener, addNotificationResponseListener, clearLastNotificationResponse, configureNotificationHandler, createAndroidAlarmChannel, getLastNotificationResponse, getNotificationPermissionStatus } from './src/services/notificationService';
 import { colors, spacing, typography } from './src/theme';
 
@@ -57,10 +58,26 @@ export default function App() {
   useEffect(() => {
     if (databaseState !== 'READY') return undefined;
     let mounted = true;
-    const refreshActiveSession = async () => { if (activeRefreshRunning.current) return; activeRefreshRunning.current = true; try { const session = await getActiveAlarmSession(); if (mounted) { setActiveSession(session); if (session) setAppMode(APP_MODES.GUEST); } } catch {} finally { activeRefreshRunning.current = false; } };
+    let activeRefreshPromise;
+    const refreshActiveSession = async (options = {}) => {
+      if (activeRefreshPromise) {
+        const currentSession = await activeRefreshPromise;
+        if (!options.authoritative) return currentSession;
+      }
+      activeRefreshRunning.current = true;
+      activeRefreshPromise = getActiveAlarmSession().then((session) => {
+        if (mounted) { setActiveSession(session); if (session) setAppMode(APP_MODES.GUEST); }
+        return session;
+      }).catch(() => undefined).finally(() => {
+        activeRefreshRunning.current = false;
+        activeRefreshPromise = undefined;
+      });
+      return activeRefreshPromise;
+    };
+    const unsubscribe = subscribeActiveSessionRefresh(refreshActiveSession);
     refreshActiveSession();
     const timer = setInterval(refreshActiveSession, 500);
-    return () => { mounted = false; clearInterval(timer); };
+    return () => { mounted = false; unsubscribe(); clearInterval(timer); };
   }, [databaseState]);
 
   useEffect(() => {

@@ -1,7 +1,7 @@
-import { ALARM_SESSION_STATUS, CHALLENGE_STATUS } from '../constants/alarmConstants';
+import { ALARM_SESSION_STATUS } from '../constants/alarmConstants';
 import { NOTIFICATION_TYPES } from '../constants/notificationConstants';
 import { getAlarmById } from '../database/alarmRepository';
-import { activateQueuedSession, createOrQueueAlarmOccurrence, getActiveAlarmSession, getAlarmSessionById, getOldestQueuedSession, updateAlarmSessionStatus, updateChallengeStatus } from '../database/alarmSessionRepository';
+import { activateQueuedSession, createOrQueueAlarmOccurrence, getActiveAlarmSession, getAlarmSessionById, getOldestQueuedSession, returnChallengeSessionToRinging, updateAlarmSessionStatus } from '../database/alarmSessionRepository';
 import { handleTriggeredAlarmSchedule } from './alarmSchedulerService';
 
 function buildOccurrenceKey(alarmId, scheduledAt, type, sessionId) {
@@ -41,8 +41,9 @@ export async function restoreAlarmQueue() {
     active = await activateNextQueuedSession();
   }
   if (active?.status === ALARM_SESSION_STATUS.CHALLENGE_ACTIVE) {
-    await updateChallengeStatus(active.id, CHALLENGE_STATUS.NOT_STARTED);
-    active = await updateAlarmSessionStatus(active.id, ALARM_SESSION_STATUS.RINGING);
+    const recovered = await returnChallengeSessionToRinging(active.id);
+    active = recovered.session;
+    if (__DEV__) console.log('[challenge-return-to-ringing]', { sessionId: active?.id ?? null, reason: 'recovery', previousStatus: ALARM_SESSION_STATUS.CHALLENGE_ACTIVE, persistedStatus: active?.status ?? null, refreshedStatus: active?.status ?? null });
   }
   if (active?.status === ALARM_SESSION_STATUS.SNOOZING && (!active.snoozeUntil || new Date(active.snoozeUntil).getTime() <= Date.now())) {
     active = await updateAlarmSessionStatus(active.id, ALARM_SESSION_STATUS.RINGING);

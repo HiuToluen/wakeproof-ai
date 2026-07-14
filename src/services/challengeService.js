@@ -1,11 +1,12 @@
 import { ALARM_SESSION_STATUS, CHALLENGE_MODES } from '../constants/alarmConstants';
-import { CHALLENGE_TIMEOUT_SECONDS, MAX_CHALLENGE_REROLLS } from '../constants/challengeConstants';
-import { CHALLENGE_CATALOG } from '../data/challengeCatalog';
+import { CHALLENGE_FLOW_MODES, CHALLENGE_TIMEOUT_SECONDS, CHALLENGE_TYPES, MAX_CHALLENGE_REROLLS } from '../constants/challengeConstants';
+import { CHALLENGE_CATALOG, DEMO_OBJECT_CHALLENGES } from '../data/challengeCatalog';
 import { getAlarmById } from '../database/alarmRepository';
 import { assignSessionChallenge, getAlarmSessionById, rerollSessionChallenge } from '../database/alarmSessionRepository';
 
 export function getActiveChallenges() {
-  return CHALLENGE_CATALOG.filter((challenge) => challenge.isActive);
+  const locations = CHALLENGE_CATALOG.filter((challenge) => challenge.isActive && challenge.type === CHALLENGE_TYPES.LOCATION_PROOF);
+  return [...DEMO_OBJECT_CHALLENGES.filter((challenge) => challenge.isActive), ...locations];
 }
 
 function getChallengesForMode(mode) {
@@ -25,7 +26,7 @@ export function selectRandomChallenge(options = {}) {
 export async function getAssignedChallenge(sessionId) {
   const session = await getAlarmSessionById(sessionId);
   if (!session?.challengeId) return null;
-  const definition = CHALLENGE_CATALOG.find((challenge) => challenge.id === session.challengeId);
+  const definition = getActiveChallenges().find((challenge) => challenge.id === session.challengeId) ?? CHALLENGE_CATALOG.find((challenge) => challenge.id === session.challengeId);
   if (!definition) return null;
   return { ...definition, startedAt: session.challengeStartedAt, deadlineAt: session.challengeDeadlineAt, rerollCount: session.challengeRerollCount ?? 0, remainingRerolls: Math.max(0, MAX_CHALLENGE_REROLLS - (session.challengeRerollCount ?? 0)), challengeHistory: session.challengeHistory ?? [] };
 }
@@ -40,6 +41,8 @@ export async function rerollChallengeForSession(sessionId) {
   const session = await getAlarmSessionById(sessionId);
   if (!session) throw new Error('Alarm session could not be loaded.');
   if (session.status !== ALARM_SESSION_STATUS.CHALLENGE_ACTIVE) throw new Error('Challenge is no longer active.');
+  if (session.challengeFlowMode !== CHALLENGE_FLOW_MODES.AI) throw new Error('Challenge reroll is unavailable in offline emergency mode.');
+  if (!session.challengeDeadlineAt || new Date(session.challengeDeadlineAt).getTime() <= Date.now()) throw new Error('Challenge deadline has expired.');
   if ((session.challengeRerollCount ?? 0) >= MAX_CHALLENGE_REROLLS) throw new Error('No rerolls remaining.');
   if (!session.challengeId) throw new Error('No challenge is currently assigned.');
   const alarm = await getAlarmById(session.alarmId);

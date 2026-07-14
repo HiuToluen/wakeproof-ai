@@ -14,7 +14,7 @@ function parseChallengeHistory(value) {
 }
 
 function mapSession(row) {
-  return row ? { id: row.id, alarmId: row.alarm_id, occurrenceKey: row.occurrence_key, queuePosition: row.queue_position, queuedAt: row.queued_at, scheduledAt: row.scheduled_at, triggeredAt: row.triggered_at, snoozeUntil: row.snooze_until, activatedAt: row.activated_at, completedAt: row.completed_at, dismissedAt: row.dismissed_at, status: row.status, snoozeCount: row.snooze_count, challengeStatus: row.challenge_status, challengeId: row.challenge_id, challengeType: row.challenge_type, challengeTargetKey: row.challenge_target_key, challengeStartedAt: row.challenge_started_at, challengeDeadlineAt: row.challenge_deadline_at, challengeAttemptCount: row.challenge_attempt_count ?? 0, challengeRerollCount: row.challenge_reroll_count ?? 0, challengeHistory: parseChallengeHistory(row.challenge_history), offlineFallbackUsed: Boolean(row.offline_fallback_used), challengeLockoutCount: row.challenge_lockout_count ?? 0, challengeLockedUntil: row.challenge_locked_until, challengeNetworkRetryCount: row.challenge_network_retry_count ?? 0, challengeFlowMode: row.challenge_flow_mode ?? CHALLENGE_FLOW_MODES.AI, createdAt: row.created_at, updatedAt: row.updated_at } : null;
+  return row ? { id: row.id, alarmId: row.alarm_id, occurrenceKey: row.occurrence_key, queuePosition: row.queue_position, queuedAt: row.queued_at, scheduledAt: row.scheduled_at, triggeredAt: row.triggered_at, snoozeUntil: row.snooze_until, activatedAt: row.activated_at, completedAt: row.completed_at, dismissedAt: row.dismissed_at, status: row.status, snoozeCount: row.snooze_count, challengeStatus: row.challenge_status, challengeId: row.challenge_id, challengeType: row.challenge_type, challengeTargetKey: row.challenge_target_key, challengeStartedAt: row.challenge_started_at, challengeDeadlineAt: row.challenge_deadline_at, challengeAttemptCount: row.challenge_attempt_count ?? 0, challengeTimeoutCount: row.challenge_timeout_count ?? 0, challengeRerollCount: row.challenge_reroll_count ?? 0, challengeHistory: parseChallengeHistory(row.challenge_history), offlineFallbackUsed: Boolean(row.offline_fallback_used), challengeLockoutCount: row.challenge_lockout_count ?? 0, challengeLockedUntil: row.challenge_locked_until, challengeNetworkRetryCount: row.challenge_network_retry_count ?? 0, challengeFlowMode: row.challenge_flow_mode ?? CHALLENGE_FLOW_MODES.AI, createdAt: row.created_at, updatedAt: row.updated_at } : null;
 }
 
 export async function createAlarmSession(session) {
@@ -53,6 +53,14 @@ export async function updateAlarmSessionStatus(id, status) {
 
 export async function updateChallengeStatus(id, status) { const database = await getDatabase(); await database.runAsync('UPDATE alarm_sessions SET challenge_status = ?, updated_at = ? WHERE id = ?', [status, new Date().toISOString(), id]); return getAlarmSessionById(id); }
 
+export async function returnChallengeSessionToRinging(id, options = {}) {
+  const database = await getDatabase();
+  const now = new Date().toISOString();
+  const incrementTimeout = options.incrementTimeout === true ? 1 : 0;
+  const result = await database.runAsync('UPDATE alarm_sessions SET status = ?, challenge_status = ?, snooze_until = NULL, challenge_timeout_count = challenge_timeout_count + ?, updated_at = ? WHERE id = ? AND status = ?', [ALARM_SESSION_STATUS.RINGING, CHALLENGE_STATUS.NOT_STARTED, incrementTimeout, now, id, ALARM_SESSION_STATUS.CHALLENGE_ACTIVE]);
+  return { session: await getAlarmSessionById(id), transitioned: result.changes === 1, timeoutCounted: incrementTimeout === 1 && result.changes === 1 };
+}
+
 export async function markOfflineFallbackUsed(id) { const database = await getDatabase(); await database.runAsync('UPDATE alarm_sessions SET offline_fallback_used = 1, challenge_flow_mode = ?, updated_at = ? WHERE id = ? AND status = ?', [CHALLENGE_FLOW_MODES.OFFLINE_EMERGENCY, new Date().toISOString(), id, ALARM_SESSION_STATUS.CHALLENGE_ACTIVE]); return getAlarmSessionById(id); }
 
 export async function incrementChallengeNetworkRetryCount(id) {
@@ -67,7 +75,7 @@ export async function registerChallengeAttemptLockout(id) {
     const row = await database.getFirstAsync('SELECT challenge_lockout_count FROM alarm_sessions WHERE id = ?', [id]);
     const count = (row?.challenge_lockout_count ?? 0) + 1;
     lockedUntil = new Date(Date.now() + count * 60 * 1000).toISOString();
-    await database.runAsync('UPDATE alarm_sessions SET challenge_attempt_count = 0, challenge_network_retry_count = 0, challenge_lockout_count = ?, challenge_locked_until = ?, challenge_flow_mode = ?, updated_at = ? WHERE id = ?', [count, lockedUntil, CHALLENGE_FLOW_MODES.AI, now, id]);
+    await database.runAsync('UPDATE alarm_sessions SET challenge_attempt_count = 0, challenge_network_retry_count = 0, challenge_lockout_count = ?, challenge_locked_until = ?, challenge_flow_mode = ?, updated_at = ? WHERE id = ? AND status = ?', [count, lockedUntil, CHALLENGE_FLOW_MODES.AI, now, id, ALARM_SESSION_STATUS.CHALLENGE_ACTIVE]);
   });
   return getAlarmSessionById(id);
 }

@@ -12,7 +12,7 @@ import { getAlarmById } from '../../database/alarmRepository';
 import { clearExpiredChallengeLockout, getAlarmSessionById, getQueuedSessionCount, snoozeAlarmSession, startChallengeSession, updateChallengeStatus } from '../../database/alarmSessionRepository';
 import { useCredits } from '../../hooks/useCredits';
 import { usePremium } from '../../hooks/usePremium';
-import { restartAlarmPlayback, stopAlarmPlayback } from '../../services/alarmAudioService';
+import { startAlarmPlayback, stopAlarmPlayback } from '../../services/alarmAudioService';
 import { assignChallengeToSession } from '../../services/challengeService';
 import { cancelPendingSnoozeForSession, scheduleSnoozeNotification } from '../../services/alarmSchedulerService';
 import { colors, spacing, typography } from '../../theme';
@@ -74,7 +74,7 @@ export default function AlarmRingingScreen({ navigation, route }) {
         }
         if (loadedSession.status !== ALARM_SESSION_STATUS.RINGING) return;
         if (loadedSession.challengeStatus !== CHALLENGE_STATUS.NOT_STARTED) await updateChallengeStatus(sessionId, CHALLENGE_STATUS.NOT_STARTED);
-        await restartAlarmPlayback(sessionId, loadedAlarm.ringtoneId);
+        await startAlarmPlayback(sessionId, loadedAlarm.ringtoneId);
         if (active) startAlarmVibration();
       } catch (error) {
         if (active) Alert.alert('Unable to open alarm', error.message);
@@ -212,7 +212,7 @@ export default function AlarmRingingScreen({ navigation, route }) {
     if (!alarm || !session || processing) return;
     setProcessing(true);
     try {
-      await stopRinging();
+      if ((session.challengeTimeoutCount ?? 0) < 2) await stopRinging();
       if (session.status === ALARM_SESSION_STATUS.SNOOZING) await cancelPendingSnoozeForSession(sessionId);
       await assignChallengeToSession(sessionId);
       await startChallengeSession(sessionId);

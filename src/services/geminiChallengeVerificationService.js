@@ -4,7 +4,7 @@ import { File } from 'expo-file-system';
 import { CHALLENGE_TYPES } from '../constants/challengeConstants';
 
 export const GEMINI_VERIFICATION_MODEL = 'gemini-2.5-flash';
-export const GEMINI_REQUEST_TIMEOUT_MS = 10000;
+export const GEMINI_REQUEST_TIMEOUT_MS = 15000;
 export const MIN_VERIFICATION_CONFIDENCE = 0.75;
 
 const ERROR_MESSAGES = {
@@ -80,8 +80,11 @@ const responseSchema = {
 function parseResponse(response) {
   const text = response?.text;
   if (typeof text !== 'string' || text.trim().length === 0) throw createVerificationError('INVALID_AI_RESPONSE');
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const jsonText = fenced ? fenced[1].trim() : trimmed;
   try {
-    return JSON.parse(text);
+    return JSON.parse(jsonText);
   } catch (error) {
     throw createVerificationError('INVALID_AI_RESPONSE', error);
   }
@@ -118,7 +121,13 @@ function withTimeout(promise) {
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 }
 
-export async function verifyChallenge({ challenge, image }) {
+function logVerification(message, details = {}) {
+  if (__DEV__) console.log(`[gemini-verification] ${message}`, details);
+}
+
+export async function verifyChallenge({ challenge, image, technicalRetryNumber = 0 }) {
+  const startedAt = Date.now();
+  logVerification('request started', { model: GEMINI_VERIFICATION_MODEL, imageWidth: image?.width, imageHeight: image?.height, approximateFileSize: image?.approximateFileSize, technicalRetryNumber });
   try {
     const inlineData = await imageToInlineData(image);
     const response = await withTimeout(getGeminiClient().models.generateContent({
@@ -135,8 +144,12 @@ export async function verifyChallenge({ challenge, image }) {
         responseSchema,
       },
     }));
-    return normalizeResult(parseResponse(response));
+    const result = normalizeResult(parseResponse(response));
+    logVerification('request completed', { durationMs: Date.now() - startedAt, technicalRetryNumber });
+    return result;
   } catch (error) {
-    throw mapGeminiError(error);
+    const mappedError = mapGeminiError(error);
+    logVerification('request failed', { durationMs: Date.now() - startedAt, technicalRetryNumber, errorCode: mappedError.code });
+    throw mappedError;
   }
 }

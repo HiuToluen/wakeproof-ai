@@ -7,7 +7,7 @@ import SecondaryButton from '../../components/common/SecondaryButton';
 import { CHALLENGE_MODES } from '../../constants/alarmConstants';
 import { MAX_CHALLENGE_REROLLS } from '../../constants/challengeConstants';
 import { assignChallengeToSession, getActiveChallenges, rerollChallengeForSession } from '../../services/challengeService';
-import { returnChallengeToRinging, stopChallengeAlerts } from '../../services/challengeFlowService';
+import { prepareChallengeAlerts, reconcileChallengeScreenSession, returnChallengeToRinging } from '../../services/challengeFlowService';
 import { colors, spacing, typography } from '../../theme';
 
 function formatRemaining(deadlineAt) {
@@ -29,17 +29,22 @@ export default function ChallengeInstructionScreen({ navigation, route }) {
   const [remaining, setRemaining] = useState('');
   const [rerolling, setRerolling] = useState(false);
   const [rerollMessage, setRerollMessage] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [challengeAllowed, setChallengeAllowed] = useState(preview);
   const [previewRerollCount, setPreviewRerollCount] = useState(route.params.previewRerollCount ?? 0);
   const [previewChallengeHistory, setPreviewChallengeHistory] = useState(route.params.previewChallengeHistory ?? []);
   const transitionStarted = useRef(false);
   const rerollRequestId = useRef(0);
 
-  const returnToRinging = useCallback(async () => {
+  const returnToRinging = useCallback(async (reason = 'back') => {
     if (transitionStarted.current) return;
     transitionStarted.current = true;
     try {
       if (preview) navigation.popTo('AlarmPreview', { alarmId });
-      else await returnChallengeToRinging(sessionId);
+      else {
+        const updatedSession = await returnChallengeToRinging(sessionId, reason);
+        if (updatedSession?.status === 'RINGING') navigation.reset({ index: 0, routes: [{ name: 'AlarmRinging', params: { alarmId, sessionId } }] });
+      }
     } catch (error) {
       transitionStarted.current = false;
       Alert.alert('Unable to return to alarm', error.message);
@@ -48,17 +53,38 @@ export default function ChallengeInstructionScreen({ navigation, route }) {
 
   useEffect(() => {
     let mounted = true;
-    stopChallengeAlerts().catch(() => {});
-    if (preview) setChallenge(route.params.challenge);
-    else assignChallengeToSession(sessionId).then((assigned) => { if (mounted) setChallenge(assigned); }).catch((error) => Alert.alert('Unable to load challenge', error.message));
+    const loadChallenge = async () => {
+      setLoadError('');
+      try {
+        if (preview) {
+          prepareChallengeAlerts(sessionId, true).catch(() => {});
+          if (mounted) { setChallengeAllowed(true); setChallenge(route.params.challenge); }
+          return;
+        }
+        const result = await reconcileChallengeScreenSession(sessionId, route.name);
+        if (!mounted || result.action !== 'stay-challenge') return;
+        setChallengeAllowed(true);
+        prepareChallengeAlerts(sessionId).catch(() => {});
+        const assigned = await assignChallengeToSession(sessionId);
+        const latest = await reconcileChallengeScreenSession(sessionId, route.name);
+        if (!mounted || latest.action !== 'stay-challenge') return;
+        if (!assigned) throw new Error('Challenge could not be loaded.');
+        if (mounted) setChallenge(assigned);
+      } catch (error) {
+        if (!mounted) return;
+        setChallengeAllowed(false);
+        setLoadError(error.message || 'Unable to load challenge.');
+      }
+    };
+    loadChallenge();
     const timer = setInterval(() => {
       if (!challenge?.deadlineAt) return;
       setRemaining(formatRemaining(challenge.deadlineAt));
-      if (new Date(challenge.deadlineAt).getTime() <= Date.now()) returnToRinging();
+      if (new Date(challenge.deadlineAt).getTime() <= Date.now()) returnToRinging('timeout');
     }, 500);
     const back = BackHandler.addEventListener('hardwareBackPress', () => { returnToRinging(); return true; });
-    return () => { mounted = false; clearInterval(timer); back.remove(); };
-  }, [challenge?.deadlineAt, preview, returnToRinging, route.params.challenge, sessionId]);
+    return () => { mounted = false; rerollRequestId.current += 1; clearInterval(timer); back.remove(); };
+  }, [challenge?.deadlineAt, preview, returnToRinging, route.name, route.params.challenge, sessionId]);
 
   const rerollChallenge = async () => {
     if (!challenge || rerolling || getRemainingSeconds(challenge.deadlineAt) <= 0) return;
@@ -80,6 +106,9 @@ export default function ChallengeInstructionScreen({ navigation, route }) {
         setPreviewRerollCount((count) => count + 1);
         setChallenge({ ...selected, startedAt: challenge.startedAt, deadlineAt: challenge.deadlineAt, rerollCount: previewRerollCount + 1, remainingRerolls: Math.max(0, MAX_CHALLENGE_REROLLS - previewRerollCount - 1), challengeHistory: nextHistory });
       } else {
+        const state = await reconcileChallengeScreenSession(sessionId, route.name);
+        if (state.action !== 'stay-challenge') return;
+        if (!state.session.challengeDeadlineAt || getRemainingSeconds(state.session.challengeDeadlineAt) <= 0) { transitionStarted.current = true; rerollRequestId.current += 1; await returnChallengeToRinging(sessionId, 'timeout'); return; }
         const rerolled = await rerollChallengeForSession(sessionId);
         if (requestId !== rerollRequestId.current || getRemainingSeconds(rerolled.deadlineAt) <= 0) return;
         setChallenge(rerolled);
@@ -91,6 +120,7 @@ export default function ChallengeInstructionScreen({ navigation, route }) {
     }
   };
 
+  if (!challengeAllowed) return <ScreenContainer><View style={styles.center}><Text style={loadError ? styles.warning : styles.message}>{loadError || 'Reconciling alarm...'}</Text></View></ScreenContainer>;
   if (!challenge) return <ScreenContainer><View style={styles.center}><Text style={styles.message}>Loading challenge...</Text></View></ScreenContainer>;
   const remainingRerolls = preview ? Math.max(0, MAX_CHALLENGE_REROLLS - previewRerollCount) : challenge.remainingRerolls ?? 0;
   const rerollText = remainingRerolls === 0 ? 'No rerolls remaining' : `${remainingRerolls} reroll${remainingRerolls === 1 ? '' : 's'} remaining`;

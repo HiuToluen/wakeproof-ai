@@ -108,6 +108,9 @@ export async function runMigrations() {
   if (!sessionColumnNames.has('challenge_flow_mode')) {
     await database.execAsync("ALTER TABLE alarm_sessions ADD COLUMN challenge_flow_mode TEXT NOT NULL DEFAULT 'AI';");
   }
+  if (!sessionColumnNames.has('challenge_timeout_count')) {
+    await database.execAsync('ALTER TABLE alarm_sessions ADD COLUMN challenge_timeout_count INTEGER NOT NULL DEFAULT 0;');
+  }
   await database.execAsync(`
     CREATE TABLE IF NOT EXISTS challenge_attempts (
       id TEXT PRIMARY KEY NOT NULL,

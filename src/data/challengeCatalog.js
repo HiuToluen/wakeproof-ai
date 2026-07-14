@@ -1,5 +1,20 @@
 import { CHALLENGE_TYPES } from '../constants/challengeConstants';
 
+export const DEMO_OBJECT_CHALLENGES = [
+  { id: 'demo_object_table', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'table', label: 'Bàn', title: 'Tìm một cái bàn', instruction: 'Chụp ảnh rõ ràng của một cái bàn.', difficulty: 1, isActive: true },
+  { id: 'demo_object_chair', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'chair', label: 'Ghế', title: 'Tìm một cái ghế', instruction: 'Chụp ảnh rõ ràng của một cái ghế.', difficulty: 1, isActive: true },
+  { id: 'demo_object_laptop', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'laptop', label: 'Laptop', title: 'Tìm một chiếc laptop', instruction: 'Chụp ảnh rõ ràng của một chiếc laptop.', difficulty: 1, isActive: true },
+  { id: 'demo_object_computer_mouse', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'computer_mouse', label: 'Chuột máy tính', title: 'Tìm một con chuột máy tính', instruction: 'Chụp ảnh rõ ràng của một con chuột máy tính.', difficulty: 1, isActive: true },
+  { id: 'demo_object_smartphone', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'smartphone', label: 'Điện thoại', title: 'Tìm một chiếc điện thoại', instruction: 'Chụp ảnh rõ ràng của một chiếc điện thoại.', difficulty: 1, isActive: true },
+  { id: 'demo_object_water_bottle', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'water_bottle', label: 'Chai nước', title: 'Tìm một chai nước', instruction: 'Chụp ảnh rõ ràng của một chai nước.', difficulty: 1, isActive: true },
+];
+
+export function getRandomDemoObjectChallenge(previousChallengeId) {
+  const alternatives = previousChallengeId ? DEMO_OBJECT_CHALLENGES.filter((challenge) => challenge.id !== previousChallengeId) : DEMO_OBJECT_CHALLENGES;
+  const candidates = alternatives.length > 0 ? alternatives : DEMO_OBJECT_CHALLENGES;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
 export const CHALLENGE_CATALOG = [
   { id: 'object_toothbrush', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'toothbrush', title: 'Find your toothbrush', instruction: 'Take a clear photo of a toothbrush.', difficulty: 1, isActive: true },
   { id: 'object_water_cup', type: CHALLENGE_TYPES.OBJECT_PROOF, targetKey: 'water_cup', title: 'Find a water cup', instruction: 'Take a clear photo of a water cup.', difficulty: 1, isActive: true },

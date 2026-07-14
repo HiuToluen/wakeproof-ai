@@ -3,10 +3,10 @@ import { Alert, Pressable, StyleSheet, Text, Vibration, View } from 'react-nativ
 
 import ScreenContainer from '../../components/common/ScreenContainer';
 import SecondaryButton from '../../components/common/SecondaryButton';
-import { ALARM_SESSION_STATUS, CHALLENGE_STATUS } from '../../constants/alarmConstants';
 import { disableAlarmAndClearSchedule, getAlarmById } from '../../database/alarmRepository';
-import { completeSessionAndActivateNext, getQueuedSessionCount, updateAlarmSessionStatus, updateChallengeStatus } from '../../database/alarmSessionRepository';
+import { completeSessionAndActivateNext, getQueuedSessionCount } from '../../database/alarmSessionRepository';
 import { forceStopAlarmPlayback } from '../../services/alarmAudioService';
+import { returnChallengeToRinging } from '../../services/challengeFlowService';
 import { colors, spacing, typography } from '../../theme';
 
 const HOLD_DURATION_MS = 5000;
@@ -50,8 +50,7 @@ export default function PlaceholderChallengeScreen({ navigation, route }) {
       return;
     }
     try {
-      await updateChallengeStatus(sessionId, CHALLENGE_STATUS.NOT_STARTED);
-      await updateAlarmSessionStatus(sessionId, ALARM_SESSION_STATUS.RINGING);
+      await returnChallengeToRinging(sessionId, 'recovery');
       allowNavigation.current = true;
     } catch (error) {
       transitionStarted.current = false;

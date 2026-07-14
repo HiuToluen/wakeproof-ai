@@ -4,7 +4,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 
 import PrimaryButton from '../../components/common/PrimaryButton';
 import SecondaryButton from '../../components/common/SecondaryButton';
-import { returnChallengeToRinging, stopChallengeAlerts } from '../../services/challengeFlowService';
+import { prepareChallengeAlerts, reconcileChallengeScreenSession, returnChallengeToRinging } from '../../services/challengeFlowService';
 import { colors, spacing, typography } from '../../theme';
 
 function getRemaining(deadlineAt) {
@@ -20,19 +20,27 @@ export default function CameraChallengeScreen({ navigation, route }) {
   const [cameraReady, setCameraReady] = useState(false);
   const cameraRef = useRef(null);
   const transitionStarted = useRef(false);
+  const operationId = useRef(0);
+  const [challengeAllowed, setChallengeAllowed] = useState(true);
 
   const timeout = useCallback(async () => {
     if (transitionStarted.current) return;
     transitionStarted.current = true;
     if (preview) navigation.popTo('AlarmPreview', { alarmId });
     else {
-      await returnChallengeToRinging(sessionId, { restartAlerts: false }).catch((error) => Alert.alert('Unable to restart alarm', error.message));
-      navigation.reset({ index: 0, routes: [{ name: 'AlarmRinging', params: { alarmId, sessionId } }] });
+      await returnChallengeToRinging(sessionId, 'timeout').catch((error) => Alert.alert('Unable to restart alarm', error.message));
     }
   }, [alarmId, navigation, preview, sessionId]);
 
   useEffect(() => {
-    stopChallengeAlerts().catch(() => {});
+    let mounted = true;
+    const prepare = async () => {
+      await prepareChallengeAlerts(sessionId, preview).catch(() => {});
+      if (preview) { if (mounted) setChallengeAllowed(true); return; }
+      const result = await reconcileChallengeScreenSession(sessionId, route.name).catch(() => null);
+      if (mounted && result?.action === 'stay-challenge') setChallengeAllowed(true);
+    };
+    prepare();
     requestPermission();
     const timer = setInterval(() => {
       const next = getRemaining(challenge.deadlineAt);
@@ -40,14 +48,25 @@ export default function CameraChallengeScreen({ navigation, route }) {
       if (next <= 0) timeout();
     }, 500);
     const back = BackHandler.addEventListener('hardwareBackPress', () => { navigation.navigate(preview ? 'PreviewChallengeInstruction' : 'ChallengeInstruction', { alarmId, sessionId, preview, challenge, challengeMode, previewRerollCount, previewChallengeHistory, previewAttemptCount, lastVerificationCompletedAt, serviceRetryCount }); return true; });
-    return () => { clearInterval(timer); back.remove(); };
-  }, [challenge, challenge.deadlineAt, navigation, preview, requestPermission, sessionId, timeout]);
+    return () => { mounted = false; transitionStarted.current = true; operationId.current += 1; clearInterval(timer); back.remove(); };
+  }, [challenge, challenge.deadlineAt, navigation, preview, requestPermission, route.name, sessionId, timeout]);
 
   const capture = async () => {
-    if (capturing || !cameraReady || !cameraRef.current || remaining <= 0) return;
+    if (capturing || !cameraReady || !cameraRef.current || remaining <= 0 || !challengeAllowed) return;
+    if (!preview) {
+      const result = await reconcileChallengeScreenSession(sessionId, route.name).catch(() => null);
+      if (result?.action !== 'stay-challenge') return;
+    }
+    const currentOperation = operationId.current + 1;
+    operationId.current = currentOperation;
     setCapturing(true);
     try {
       const image = await cameraRef.current.takePictureAsync({ quality: 0.8, base64: false, exif: false });
+      if (currentOperation !== operationId.current || transitionStarted.current) return;
+      if (!preview) {
+        const result = await reconcileChallengeScreenSession(sessionId, route.name).catch(() => null);
+        if (result?.action !== 'stay-challenge' || currentOperation !== operationId.current) return;
+      }
       navigation.navigate(preview ? 'PreviewChallengePhoto' : 'ChallengePreview', { alarmId, sessionId, preview, challenge, image, challengeMode, previewRerollCount, previewChallengeHistory, previewAttemptCount, lastVerificationCompletedAt, serviceRetryCount });
     } catch (error) {
       Alert.alert('Unable to capture photo', error.message);

@@ -7,10 +7,10 @@ async function getCurrentChallenge(sessionId, challenge) {
   return await getAssignedChallenge(sessionId) ?? challenge;
 }
 
-export async function verifyChallenge({ sessionId, challenge, image }) {
+export async function verifyChallenge({ sessionId, challenge, image, technicalRetryNumber = 0 }) {
   const currentChallenge = await getCurrentChallenge(sessionId, challenge);
   if (process.env.EXPO_PUBLIC_USE_MOCK_AI === 'true') {
     return verifyMockChallenge({ sessionId, challenge: currentChallenge, image });
   }
-  return verifyGeminiChallenge({ sessionId, challenge: currentChallenge, image });
+  return verifyGeminiChallenge({ sessionId, challenge: currentChallenge, image, technicalRetryNumber });
 }

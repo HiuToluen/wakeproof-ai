@@ -16,10 +16,12 @@ export async function createChallengeAttempt(attempt) {
 export async function updateChallengeAttemptResult(id, result) {
   const database = await getDatabase();
   await database.withTransactionAsync(async () => {
-    const existing = await database.getFirstAsync('SELECT session_id, verification_status FROM challenge_attempts WHERE id = ?', [id]);
+    const existing = await database.getFirstAsync('SELECT session_id, challenge_id, verification_status FROM challenge_attempts WHERE id = ?', [id]);
+    const session = existing ? await database.getFirstAsync('SELECT status, challenge_id FROM alarm_sessions WHERE id = ?', [existing.session_id]) : null;
+    if (!existing || existing.verification_status !== CHALLENGE_ATTEMPT_STATUS.PENDING || session?.status !== 'CHALLENGE_ACTIVE' || session.challenge_id !== existing.challenge_id) return;
     await database.runAsync('UPDATE challenge_attempts SET verification_status = ?, is_valid = ?, confidence = ?, reason = ? WHERE id = ?', [result.verificationStatus, result.isValid == null ? null : result.isValid ? 1 : 0, result.confidence ?? null, result.reason ?? null, id]);
-    if (existing?.verification_status === CHALLENGE_ATTEMPT_STATUS.PENDING && result.verificationStatus === CHALLENGE_ATTEMPT_STATUS.FAILED) {
-      await database.runAsync('UPDATE alarm_sessions SET challenge_attempt_count = challenge_attempt_count + 1, updated_at = ? WHERE id = ?', [new Date().toISOString(), existing.session_id]);
+    if (result.verificationStatus === CHALLENGE_ATTEMPT_STATUS.FAILED) {
+      await database.runAsync('UPDATE alarm_sessions SET challenge_attempt_count = challenge_attempt_count + 1, updated_at = ? WHERE id = ? AND status = ? AND challenge_id = ?', [new Date().toISOString(), existing.session_id, 'CHALLENGE_ACTIVE', existing.challenge_id]);
     }
   });
   return mapAttempt(await database.getFirstAsync('SELECT * FROM challenge_attempts WHERE id = ?', [id]));

@@ -15,8 +15,15 @@ function getInitialRouteName(status) {
   return 'AlarmRinging';
 }
 
+function getRouteTarget(status) {
+  if (status === 'SNOOZING') return 'AlarmSnoozing';
+  if (status === 'CHALLENGE_ACTIVE') return 'ChallengeFlow';
+  return 'AlarmRinging';
+}
+
 export default function ActiveAlarmNavigator({ session }) {
   const params = { alarmId: session.alarmId, sessionId: session.id };
+  if (__DEV__) console.log('[active-alarm-route]', { sessionId: session.id, status: session.status, target: getRouteTarget(session.status) });
   return (
     <Stack.Navigator initialRouteName={getInitialRouteName(session.status)} screenOptions={{ gestureEnabled: false, headerShown: false }}>
       <Stack.Screen name="AlarmRinging" component={AlarmRingingScreen} initialParams={params} />

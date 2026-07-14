@@ -5,7 +5,7 @@ import PrimaryButton from '../../components/common/PrimaryButton';
 import SecondaryButton from '../../components/common/SecondaryButton';
 import ScreenContainer from '../../components/common/ScreenContainer';
 import { compressChallengeImage } from '../../services/imageProcessingService';
-import { returnChallengeToRinging, stopChallengeAlerts } from '../../services/challengeFlowService';
+import { prepareChallengeAlerts, reconcileChallengeScreenSession, returnChallengeToRinging } from '../../services/challengeFlowService';
 import { colors, spacing, typography } from '../../theme';
 
 function getRemaining(deadlineAt) {
@@ -16,36 +16,55 @@ export default function ChallengePreviewScreen({ navigation, route }) {
   const { alarmId, sessionId, challenge, image, preview = false, challengeMode, previewRerollCount, previewChallengeHistory, previewAttemptCount, lastVerificationCompletedAt, serviceRetryCount } = route.params;
   const [remaining, setRemaining] = useState(getRemaining(challenge.deadlineAt));
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const transitionStarted = useRef(false);
+  const [challengeAllowed, setChallengeAllowed] = useState(true);
 
   const timeout = useCallback(async () => {
     if (transitionStarted.current) return;
     transitionStarted.current = true;
     if (preview) navigation.popTo('AlarmPreview', { alarmId });
     else {
-      await returnChallengeToRinging(sessionId, { restartAlerts: false }).catch((error) => Alert.alert('Unable to restart alarm', error.message));
-      navigation.reset({ index: 0, routes: [{ name: 'AlarmRinging', params: { alarmId, sessionId } }] });
+      await returnChallengeToRinging(sessionId, 'timeout').catch((error) => Alert.alert('Unable to restart alarm', error.message));
     }
   }, [alarmId, navigation, preview, sessionId]);
 
   useEffect(() => {
-    stopChallengeAlerts().catch(() => {});
+    let mounted = true;
+    const prepare = async () => {
+      await prepareChallengeAlerts(sessionId, preview).catch(() => {});
+      if (preview) { if (mounted) setChallengeAllowed(true); return; }
+      const result = await reconcileChallengeScreenSession(sessionId, route.name).catch(() => null);
+      if (mounted && result?.action === 'stay-challenge') setChallengeAllowed(true);
+    };
+    prepare();
     const timer = setInterval(() => {
       const next = getRemaining(challenge.deadlineAt);
       setRemaining(next);
       if (next <= 0) timeout();
     }, 500);
     const back = BackHandler.addEventListener('hardwareBackPress', () => { navigation.navigate(preview ? 'PreviewCameraChallenge' : 'CameraChallenge', { alarmId, sessionId, preview, challenge, challengeMode, previewRerollCount, previewChallengeHistory, previewAttemptCount, lastVerificationCompletedAt, serviceRetryCount }); return true; });
-    return () => { clearInterval(timer); back.remove(); };
-  }, [challenge, navigation, preview, sessionId, timeout]);
+    return () => { mounted = false; transitionStarted.current = true; submittingRef.current = true; clearInterval(timer); back.remove(); };
+  }, [challenge, navigation, preview, route.name, sessionId, timeout]);
 
   const submit = async () => {
-    if (submitting || remaining <= 0) return;
+    if (submittingRef.current || remaining <= 0 || !challengeAllowed) return;
+    if (!preview) {
+      const result = await reconcileChallengeScreenSession(sessionId, route.name).catch(() => null);
+      if (result?.action !== 'stay-challenge') return;
+    }
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const compressedImage = await compressChallengeImage(image);
+      if (transitionStarted.current) return;
+      if (!preview) {
+        const result = await reconcileChallengeScreenSession(sessionId, route.name).catch(() => null);
+        if (result?.action !== 'stay-challenge') return;
+      }
       navigation.navigate(preview ? 'PreviewChallengeVerification' : 'ChallengeVerification', { alarmId, sessionId, preview, challenge, image: compressedImage, challengeMode, previewRerollCount, previewChallengeHistory, previewAttemptCount, lastVerificationCompletedAt, serviceRetryCount });
     } catch (error) {
+      submittingRef.current = false;
       setSubmitting(false);
       Alert.alert('Unable to prepare photo', error.message);
     }
