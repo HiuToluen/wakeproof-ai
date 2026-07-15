@@ -1,6 +1,8 @@
+import { normalizeRepeatDays } from './dateTime';
+
 export function calculateAlarmOccurrence(alarm, now = new Date()) {
   const current = new Date(now.getTime());
-  const repeatDays = Array.isArray(alarm.repeatDays) ? alarm.repeatDays : [];
+  const repeatDays = normalizeRepeatDays(alarm.repeatDays);
   const repeatDaySet = repeatDays.length > 0 ? new Set(repeatDays) : null;
 
   for (let offset = 0; offset <= 7; offset += 1) {

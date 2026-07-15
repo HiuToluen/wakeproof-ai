@@ -28,6 +28,15 @@ function pickRandom(challenges) {
   return challenges[Math.floor(Math.random() * challenges.length)];
 }
 
+export function selectChallengeRerollCandidate(alternatives, history = [], excludedChallengeId) {
+  const historySet = new Set(history);
+  const unseen = alternatives.filter((challenge) => !historySet.has(challenge.id));
+  const selected = pickRandom(unseen.length > 0 ? unseen : alternatives);
+  const nextHistory = historySet.has(excludedChallengeId) ? history : [...history, excludedChallengeId];
+
+  return { selected, nextHistory };
+}
+
 export function selectRandomChallenge(options = {}) {
   const challenges = getChallengesForMode(options.mode ?? CHALLENGE_MODES.RANDOM);
   if (challenges.length === 0) throw new Error('No active challenges are available.');
@@ -60,11 +69,7 @@ export async function rerollChallengeForSession(sessionId) {
   const validPool = getChallengesForMode(alarm?.challengeMode ?? CHALLENGE_MODES.RANDOM);
   const alternatives = validPool.filter((challenge) => challenge.id !== session.challengeId);
   if (alternatives.length === 0) throw new Error('No alternative challenge is available for this alarm.');
-  const history = session.challengeHistory ?? [];
-  const historySet = new Set(history);
-  const unseen = alternatives.filter((challenge) => !historySet.has(challenge.id));
-  const selected = pickRandom(unseen.length > 0 ? unseen : alternatives);
-  const nextHistory = historySet.has(session.challengeId) ? history : [...history, session.challengeId];
+  const { selected, nextHistory } = selectChallengeRerollCandidate(alternatives, session.challengeHistory ?? [], session.challengeId);
   const updatedSession = await rerollSessionChallenge(sessionId, selected, nextHistory);
   if (updatedSession.status !== ALARM_SESSION_STATUS.CHALLENGE_ACTIVE || updatedSession.challengeId !== selected.id) throw new Error('Challenge reroll could not be applied.');
   return { ...selected, startedAt: updatedSession.challengeStartedAt, deadlineAt: updatedSession.challengeDeadlineAt, rerollCount: updatedSession.challengeRerollCount, remainingRerolls: Math.max(0, MAX_CHALLENGE_REROLLS - updatedSession.challengeRerollCount), challengeHistory: updatedSession.challengeHistory };
