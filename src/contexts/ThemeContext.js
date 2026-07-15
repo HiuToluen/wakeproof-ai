@@ -7,6 +7,7 @@ import { getPalette, spacing, typography, radius, shadow } from '../theme';
 // Persisted user preference: 'system' follows the OS, 'light'/'dark' override it.
 export const THEME_MODES = { SYSTEM: 'system', LIGHT: 'light', DARK: 'dark' };
 const STORAGE_KEY = '@wakeproof/theme-mode';
+const THEME_MODE_VALUES = new Set(Object.values(THEME_MODES));
 
 export const ThemeContext = createContext(null);
 
@@ -26,7 +27,7 @@ export function ThemeProvider({ children }) {
     let active = true;
     AsyncStorage.getItem(STORAGE_KEY)
       .then((saved) => {
-        if (active && saved && Object.values(THEME_MODES).includes(saved)) setModeState(saved);
+        if (active && saved && THEME_MODE_VALUES.has(saved)) setModeState(saved);
       })
       .catch(() => {})
       .finally(() => { hydrated.current = true; });

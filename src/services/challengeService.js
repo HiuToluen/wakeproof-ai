@@ -5,12 +5,23 @@ import { getAlarmById } from '../database/alarmRepository';
 import { assignSessionChallenge, getAlarmSessionById, rerollSessionChallenge } from '../database/alarmSessionRepository';
 
 export function getActiveChallenges() {
-  const locations = CHALLENGE_CATALOG.filter((challenge) => challenge.isActive && challenge.type === CHALLENGE_TYPES.LOCATION_PROOF);
-  return [...DEMO_OBJECT_CHALLENGES.filter((challenge) => challenge.isActive), ...locations];
+  const activeChallenges = [];
+
+  for (const challenge of DEMO_OBJECT_CHALLENGES) {
+    if (challenge.isActive) activeChallenges.push(challenge);
+  }
+
+  for (const challenge of CHALLENGE_CATALOG) {
+    if (challenge.isActive && challenge.type === CHALLENGE_TYPES.LOCATION_PROOF) activeChallenges.push(challenge);
+  }
+
+  return activeChallenges;
 }
 
 function getChallengesForMode(mode) {
-  return getActiveChallenges().filter((challenge) => mode === CHALLENGE_MODES.RANDOM || challenge.type === mode);
+  const activeChallenges = getActiveChallenges();
+  if (mode === CHALLENGE_MODES.RANDOM) return activeChallenges;
+  return activeChallenges.filter((challenge) => challenge.type === mode);
 }
 
 function pickRandom(challenges) {
@@ -50,9 +61,10 @@ export async function rerollChallengeForSession(sessionId) {
   const alternatives = validPool.filter((challenge) => challenge.id !== session.challengeId);
   if (alternatives.length === 0) throw new Error('No alternative challenge is available for this alarm.');
   const history = session.challengeHistory ?? [];
-  const unseen = alternatives.filter((challenge) => !history.includes(challenge.id));
+  const historySet = new Set(history);
+  const unseen = alternatives.filter((challenge) => !historySet.has(challenge.id));
   const selected = pickRandom(unseen.length > 0 ? unseen : alternatives);
-  const nextHistory = history.includes(session.challengeId) ? history : [...history, session.challengeId];
+  const nextHistory = historySet.has(session.challengeId) ? history : [...history, session.challengeId];
   const updatedSession = await rerollSessionChallenge(sessionId, selected, nextHistory);
   if (updatedSession.status !== ALARM_SESSION_STATUS.CHALLENGE_ACTIVE || updatedSession.challengeId !== selected.id) throw new Error('Challenge reroll could not be applied.');
   return { ...selected, startedAt: updatedSession.challengeStartedAt, deadlineAt: updatedSession.challengeDeadlineAt, rerollCount: updatedSession.challengeRerollCount, remainingRerolls: Math.max(0, MAX_CHALLENGE_REROLLS - updatedSession.challengeRerollCount), challengeHistory: updatedSession.challengeHistory };

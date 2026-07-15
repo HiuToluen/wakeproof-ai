@@ -7,6 +7,8 @@ import { SLEEP_CYCLE_MINUTES, FALL_ASLEEP_MINUTES } from '../constants/premiumCo
 export { SLEEP_CYCLE_MINUTES, FALL_ASLEEP_MINUTES };
 
 const MINUTES_PER_DAY = 24 * 60;
+const BEDTIME_CYCLE_OPTIONS = [6, 5, 4, 3];
+const WAKE_CYCLE_OPTIONS = [3, 4, 5, 6];
 
 // Quality labels by number of completed sleep cycles.
 const QUALITY_BY_CYCLES = {
@@ -59,7 +61,7 @@ function minutesToTime(totalMinutes) {
 export function calculateBedtimes(wakeTime) {
   const wakeMinutes = timeToMinutes(wakeTime);
 
-  return [6, 5, 4, 3].map((cycles) => {
+  return BEDTIME_CYCLE_OPTIONS.map((cycles) => {
     const totalSleepMinutes = cycles * SLEEP_CYCLE_MINUTES;
     const bedtimeMinutes = wakeMinutes - totalSleepMinutes + FALL_ASLEEP_MINUTES;
 
@@ -87,7 +89,7 @@ const WAKE_TIME_OFFSET = FALL_ASLEEP_MINUTES + 40;
 export function calculateWakeTimes(bedtime) {
   const bedtimeMinutes = timeToMinutes(bedtime);
 
-  return [3, 4, 5, 6].map((cycles) => {
+  return WAKE_CYCLE_OPTIONS.map((cycles) => {
     const totalSleepMinutes = cycles * SLEEP_CYCLE_MINUTES;
     const wakeMinutes = bedtimeMinutes + totalSleepMinutes + WAKE_TIME_OFFSET;
 

@@ -1,5 +1,7 @@
 import { DAYS } from '../constants/alarmConstants';
 
+const DAY_ABBREVIATIONS_BY_VALUE = new Map(DAYS.map((day) => [day.value, day.label.slice(0, 3)]));
+
 export function formatTime(hour, minute) {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
@@ -21,7 +23,7 @@ export function getRepeatDaysSummary(repeatDays) {
   }
 
   return uniqueDays
-    .map((value) => DAYS.find((day) => day.value === value)?.label.slice(0, 3))
+    .map((value) => DAY_ABBREVIATIONS_BY_VALUE.get(value))
     .filter(Boolean)
     .join(', ');
 }

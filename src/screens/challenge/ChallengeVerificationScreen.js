@@ -15,17 +15,14 @@ import { useTheme } from '../../hooks/useTheme';
 import { releaseAlarmStreamVolumeSnapshot } from '../../services/androidAlarmVolumeService';
 
 const TECHNICAL_ERROR_CODES = ['NETWORK_ERROR', 'VERIFICATION_TIMEOUT', 'AI_SERVICE_ERROR', 'RATE_LIMITED', 'INVALID_AI_RESPONSE', 'MISSING_API_KEY'];
+const TECHNICAL_ERROR_CODE_SET = new Set(TECHNICAL_ERROR_CODES);
 
 function getRemaining(deadlineAt) {
   return Math.max(0, Math.ceil((new Date(deadlineAt).getTime() - Date.now()) / 1000));
 }
 
-function isRetryableSameImageError(error) {
-  return TECHNICAL_ERROR_CODES.includes(error?.code);
-}
-
-function isOfflineEligibleError(error) {
-  return TECHNICAL_ERROR_CODES.includes(error?.code);
+function isTechnicalError(error) {
+  return TECHNICAL_ERROR_CODE_SET.has(error?.code);
 }
 
 function randomInt(min, max) {
@@ -211,7 +208,7 @@ export default function ChallengeVerificationScreen({ navigation, route }) {
       if (!preview && (!latestSession || latestSession.status !== 'CHALLENGE_ACTIVE' || latestSession.challengeId !== challenge.id || latestSession.challengeFlowMode !== CHALLENGE_FLOW_MODES.AI || latestLocked || !latestDeadlineAt || new Date(latestDeadlineAt).getTime() <= Date.now())) return;
       if (getRemaining(challenge.deadlineAt) <= 0) { timeout(); return; }
       if (attempt) await updateChallengeAttemptResult(attempt.id, { verificationStatus: CHALLENGE_ATTEMPT_STATUS.ERROR, isValid: false, reason: error.message }).catch(() => {});
-      if (isOfflineEligibleError(error)) {
+      if (isTechnicalError(error)) {
         if (preview) serviceRetryCountRef.current += 1;
         else {
           const updatedSession = await incrementChallengeNetworkRetryCount(sessionId);

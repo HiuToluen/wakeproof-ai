@@ -10,6 +10,12 @@ import { assignChallengeToSession, getActiveChallenges, rerollChallengeForSessio
 import { useTheme } from '../../hooks/useTheme';
 import { prepareChallengeAlerts, reconcileChallengeScreenSession, returnChallengeToRinging } from '../../services/challengeFlowService';
 
+function pickFromUnseenChallenges(alternatives, history) {
+  const historySet = new Set(history);
+  const unseen = alternatives.filter((item) => !historySet.has(item.id));
+  return { historySet, unseen };
+}
+
 function formatRemaining(deadlineAt) {
   const seconds = Math.max(0, Math.ceil((new Date(deadlineAt).getTime() - Date.now()) / 1000));
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
@@ -101,9 +107,9 @@ export default function ChallengeInstructionScreen({ navigation, route }) {
         const validPool = getActiveChallenges().filter((item) => (route.params.challengeMode ?? CHALLENGE_MODES.RANDOM) === CHALLENGE_MODES.RANDOM || item.type === route.params.challengeMode);
         const alternatives = validPool.filter((item) => item.id !== challenge.id);
         if (alternatives.length === 0) throw new Error('No alternative challenge is available for this alarm.');
-        const unseen = alternatives.filter((item) => !previewChallengeHistory.includes(item.id));
+        const { historySet, unseen } = pickFromUnseenChallenges(alternatives, previewChallengeHistory);
         const selected = pickRandom(unseen.length > 0 ? unseen : alternatives);
-        const nextHistory = previewChallengeHistory.includes(challenge.id) ? previewChallengeHistory : [...previewChallengeHistory, challenge.id];
+        const nextHistory = historySet.has(challenge.id) ? previewChallengeHistory : [...previewChallengeHistory, challenge.id];
         if (requestId !== rerollRequestId.current || getRemainingSeconds(challenge.deadlineAt) <= 0) return;
         setPreviewChallengeHistory(nextHistory);
         setPreviewRerollCount((count) => count + 1);

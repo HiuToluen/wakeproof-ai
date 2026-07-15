@@ -7,9 +7,10 @@ import { useTheme } from '../../hooks/useTheme';
 export default function DaySelector({ selectedDays, onChange }) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const selectedDaySet = useMemo(() => new Set(selectedDays), [selectedDays]);
 
   const toggleDay = (value) => {
-    const nextDays = selectedDays.includes(value)
+    const nextDays = selectedDaySet.has(value)
       ? selectedDays.filter((day) => day !== value)
       : [...selectedDays, value].sort((first, second) => first - second);
     onChange(nextDays);
@@ -18,7 +19,7 @@ export default function DaySelector({ selectedDays, onChange }) {
   return (
     <View style={styles.container}>
       {DAYS.map((day) => {
-        const selected = selectedDays.includes(day.value);
+        const selected = selectedDaySet.has(day.value);
         return (
           <Pressable
             accessibilityLabel={day.label}

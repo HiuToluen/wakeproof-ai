@@ -43,7 +43,10 @@ async function getGoogleCredential() {
 }
 
 export function getLinkedProviders(user = auth.currentUser) {
-  const providerIds = user?.providerData?.map((provider) => provider.providerId) || [];
+  const providerIds = [];
+  for (const provider of user?.providerData ?? []) {
+    providerIds.push(provider.providerId);
+  }
   return {
     providerIds,
     hasPasswordProvider: providerIds.includes('password'),

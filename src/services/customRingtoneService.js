@@ -14,6 +14,7 @@ const MAX_DISPLAY_NAME_LENGTH = 80;
 const SIZE_ERROR = 'Audio file is too large. Maximum size is 25 MB.';
 const FORMAT_ERROR = 'Unsupported audio format. Please select an MP3, M4A, WAV, AAC, or OGG file.';
 const LOAD_ERROR = 'This audio file could not be used as a ringtone.';
+const KNOWN_IMPORT_ERRORS = new Set([SIZE_ERROR, FORMAT_ERROR, LOAD_ERROR, 'Unable to read the selected audio file.', 'The selected audio file could not be accessed.', 'Unable to save the audio file locally.', 'Unable to save this custom ringtone. Please try again.']);
 
 function friendlyError(message) {
   return new Error(message);
@@ -166,7 +167,7 @@ export async function importCustomRingtone() {
     }
   } catch (error) {
     if (destination) safeDeleteFile(destination);
-    if ([SIZE_ERROR, FORMAT_ERROR, LOAD_ERROR, 'Unable to read the selected audio file.', 'The selected audio file could not be accessed.', 'Unable to save the audio file locally.', 'Unable to save this custom ringtone. Please try again.'].includes(error.message)) throw error;
+    if (KNOWN_IMPORT_ERRORS.has(error.message)) throw error;
     throw friendlyError('Unable to import this audio file. Please try another file.');
   }
 }

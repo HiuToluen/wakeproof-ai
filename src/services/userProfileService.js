@@ -10,6 +10,8 @@ const subscriptionDefaults = {
   subscriptionSource: null,
 };
 
+const PROTECTED_PROFILE_FIELDS = new Set(['plan', 'subscriptionStatus', 'subscriptionStartedAt', 'subscriptionExpiresAt', 'subscriptionSource', 'createdAt']);
+
 function profileFromUser(user, extraData = {}) {
   return {
     displayName: extraData.displayName || user.displayName || '',
@@ -40,8 +42,7 @@ export async function getUserProfile(uid) {
 
 export async function updateUserProfile(uid, updates) {
   if (!uid) throw new Error('Missing user ID.');
-  const protectedFields = ['plan', 'subscriptionStatus', 'subscriptionStartedAt', 'subscriptionExpiresAt', 'subscriptionSource', 'createdAt'];
-  const safeUpdates = Object.fromEntries(Object.entries(updates).filter(([key]) => !protectedFields.includes(key)));
+  const safeUpdates = Object.fromEntries(Object.entries(updates).filter(([key]) => !PROTECTED_PROFILE_FIELDS.has(key)));
   await updateDoc(doc(db, 'users', uid), {
     ...safeUpdates,
     updatedAt: serverTimestamp(),
